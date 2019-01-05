@@ -1,20 +1,27 @@
 # REFER TO THE FOLLOWING WHEN WRITING THIS:
 # ~/Code/PovrayTools/write_POV.py
 # ~/Code/S4Signac/device_init.json
-# ~/Code/S4Signac/simulate.json
+# ~/Code/S4Signac/simulate.py
 # povray difference: http://wiki.povray.org/content/Reference:Difference
 # example: http://wiki.povray.org/content/Documentation:Tutorial_Section_2#Basic_Shapes
 
 from os import system
-from copy import deepcopy
 import signac
-from util import update_device_dims, guess_camera, color_and_finish
+from util_pov import update_device_dims, guess_camera, color_and_finish
+from util_pov import create_cylinder, create_rectangle
 from util import deep_access
 
 """ Generates a .pov and optionally render an image for a single device """
 
-sim_id = ""
-hdf_fname = "workspace/{}.h5".format(sim_id)
+# CYLINDER
+json_file = "DeviceFiles/Cylinders/device.index.json.gz"
+device_id = "318a5dce269fc505ef665148c36a7677"
+
+# SILO
+#json_file = "DeviceFiles/Silos/device.index.json.gz"
+#device_id = "698bd2fc89cbb7439c2268a564569811"
+
+#MOTHEYE
 
 pov_name = "temp.pov"
 image_name = "render.png"
@@ -25,165 +32,213 @@ up_dir= [0,0,1]
 right_dir= [0,1,0]
 camera_angle = 45           # rotates camera around the z-axis
 camera_style = "perspective"
-# Camera style options are: perspective (default)| orthographic | fisheye |
+# Currently only perspective is supported
+# Full list of style options : perspective (default)| orthographic | fisheye |
 #   ultra_wide_angle | omnimax | panoramic | cylinder CylinderType | spherical
 #   for orthographic you might have to use e.g. "orthographic angle 30"
-# Currently only perspective is supported
-light_loc = [0,4,0]
-light_at_camera = False
 shadowless = False
-write_lights = True
 
 bg_color = [1,1,1]
 transparent = True
-antialias = False
+antialias = True 
 
-height = 1024
-width = 1024
+height = 800
+width = 800
+
+num_UC_x = 4
+num_UC_y = 4
 
 display = False
 render = True
+open_png = True
+
+color = [[1, 0, 1], [0, 1, 1], [1, 0, 0], [0, 1, 0], [1, 1, 0], [0, 0, 1]]
 
 # FILE INPUT/OUTPUT
 
+with signac.Collection.open(json_file, compresslevel=1) as d_index:
+    device_dict = list(d_index.find(filter={"_id": device_id}))[0]
+
 fID = open(pov_name,'w')
 
-#with signac.Collection.open(id_fname, compresslevel=1) as g_index:
-#    sp = list(g_index.find(filter={"_id": sim_id}))[0]
-#    device_id = deep_access(sp, ['statepoint', 'device_id'])
-#    settings_id = deep_access(sp, ['statepoint', 'settings_id'])
-#with signac.Collection.open("device.index.json.gz", compresslevel=1) as d_index:
-#    device_dict = list(d_index.find(filter={"_id": device_id}))[0]
+# CREATE DEVICE
 
-# WRITE SHAPES
+device = ""             # stores the device
+device_center = [0, 0]  # location in xy-plane
+device_dims = [0, 0, 0] # maximum dimensions of the final device
+                        # All components must be positive
+                        # update after adding each layer
 
-device_center = [0, 0]
-device_dims = [0, 0, 0]     # maximum dimensions of the final device
-# All components of this should be positive; update after adding each layer
-
-device = ""
+# Lattice vectors
+lattice_dict = deep_access(device_dict, ['statepoint', 'lattice_vecs'])
+lattice_vecs = list()
+for v in ['a', 'b']:
+    tmp_vec = list()
+    for i in ['x', 'y']:
+        tmp_vec.append(deep_access(lattice_dict, [v, i]))
+    lattice_vecs.append(tmp_vec)
 
 # Zero layer
-background_0L = "vacuum"
+# currently no need to render anything from this layer
+#background_0L = deep_access(device_dict, ["statepoint", "zero_layer", "background"])
+#thickness_0L = deep_access(device_dict, ["statepoint", "zero_layer", "thickness"])
 
 # Device layers
-num_layers = 1
-layer_type = ["rectangle", "rectangle", "silo", "cylinder"]
+device += "#declare UnitCell = "
+device += "union\n\t{ob:c}\n\t".format(ob=123)
 
-for i in range(len(layer_type)):
-    color = [1, 0, 0]
+for i in range(deep_access(device_dict, ['statepoint', 'num_layers'])):
+    thickness = deep_access(device_dict, ['statepoint', 'dev_layers', str(i), 'thickness'])
 
-    if layer_type[i] == "cylinder":
-        thickness = 5
-        material = "Si"
-        shape_0 = "circle"
-        radius_0 = 6
-        center_0 = [0, 0]
-        end_0 = [(-1.0 * device_dims[2]), (-1.0 * device_dims[2] - thickness)]
+    if deep_access(device_dict, ['statepoint', 'dev_layers', str(i)]).get('shapes') is not None:
+        shapes = deep_access(device_dict, ['statepoint', 'dev_layers', str(i), 'shapes'])
 
-        if shape_0 == "circle":
-            shape_0 = "cylinder"
-            
-        device += "{0} \n\t{ob:c} \n\t".format(shape_0, ob=123) \
-                + "<{0}, {1}, {2}>, ".format(center_0[0], center_0[1], (end_0[0])) \
-                + "<{0}, {1}, {2}>, ".format(center_0[0], center_0[1], end_0[1]) \
-                + "{0}\n\t".format(radius_1)#, cb=125)
+        # Determine shape(s) in layer
+        # WARNING: CURRENTLY VERY RUDIMENTARY!
+        # Will work on generalizing this later
+        # For now, you must deal with it as is
+        k = 0
+        if len(shapes) == 1:
+            #layer_type = deep_access(shapes, [str(k), 'shape'])
+            if deep_access(shapes, [str(k), 'shape']) == "circle":
+                layer_type = "cylinder"
+            elif deep_access(shapes, [str(k), 'shape']) == "ellipse":
+                layer_type = "ellipse"
+            elif deep_access(shapes, [str(k), 'shape']) == "rectangle":
+                layer_type = "rectangle"
+            else:
+                print("ERROR: This shape is not currently supported!")
+        elif len(shapes) == 2:
+            if deep_access(shapes, [str(k), 'material']) != "Vacuum" and deep_access(shapes, [str(k+1), 'material']) == "Vacuum": 
+                layer_type = "silo"
+            else:
+                print("ERROR: This shape is not currently supported!")
+        else:
+            print("ERROR: This shape is not currently supported!")
 
-        device = color_and_finish(device, color, finish = "billiard")
+        ######################
 
-        device_dims = update_device_dims(device_dims, radius_0, radius_0, thickness)
+        if layer_type == "cylinder":
+            material = deep_access(shapes, [str(k), 'material'])
+            center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
+            radius = deep_access(shapes, [str(k), 'shape_vars', 'radius'])
+            end = [(-1.0 * device_dims[2]), (-1.0 * device_dims[2] - thickness)]
 
-    elif layer_type[i] == "silo":
-        # will need to be able to search ahead to use difference function for silos
-        # a simple for loop will be incapable of generating silos
-        thickness = 5
-        material = "Si"
-        shape_0 = "circle"
-        radius_0 = 5
-        center_0 = [0, 0]
-        end_0 = [(-1.0 * device_dims[2]), (-1.0 * device_dims[2] - thickness)]
+            device += create_cylinder(center, end, radius)
+            device = color_and_finish(device, color[i], finish = "irid")
 
-        material = "vacuum"
-        shape_1 = "circle"
-        radius_1 = 3
-        center_1 = [0, 0]
+            device_dims = update_device_dims(device_dims, radius, radius, thickness)
 
-        if shape_0 == "circle":
-            shape_0 = "cylinder"
+        elif layer_type == "silo":
+            # will need to be able to search ahead to use difference function for silos
+            # a simple for loop will be incapable of generating silos
+            material = deep_access(shapes, [str(k), 'material'])
+            end = [(-1.0 * device_dims[2]), (-1.0 * device_dims[2] - thickness)]
 
-        if shape_1 == "circle":
-            shape_1 = "cylinder"
+            device += "difference \n\t\t{ob:c}\n\t\t".format(ob=123)
 
-        device += "difference \n\t{ob:c}\n\t".format(ob=123)
-        device += "{0} {ob:c} ".format(shape_0, ob=123) \
-                + "<{0}, {1}, {2}>, ".format(center_0[0], center_0[1], end_0[0]) \
-                + "<{0}, {1}, {2}>, ".format(center_0[0], center_0[1], end_0[1]) \
-                + "{0} {cb:c}\n\t".format(radius_0, cb=125)
-        device += "{0} {ob:c} ".format(shape_0, ob=123) \
-                + "<{0}, {1}, {2}>, ".format(center_0[0], center_0[1], (end_0[0] + 0.01)) \
-                + "<{0}, {1}, {2}>, ".format(center_0[0], center_0[1], end_0[1]) \
-                + "{0} {cb:c}\n\t".format(radius_1, cb=125)
+            # First shape
+            if deep_access(shapes, [str(k), 'shape']) == "circle":
+                center_0 = deep_access(shapes, [str(k), 'shape_vars', 'center'])
+                radius_0 = deep_access(shapes, [str(k), 'shape_vars', 'radius'])
+                device += create_cylinder(center_0, end, radius_0, for_silo=True)
+            elif deep_access(shapes, [str(k), 'shape']) == "ellipse":
+                print("WARNING: This function is not operational!!")
+            elif deep_access(shapes, [str(k), 'shape']) == "rectangle":
+                print("WARNING: create_rectangle function has not been tested!!")
+            else:
+                print("ERROR: This shape is not supported!!")
 
-        device = color_and_finish(device, color, finish = "irid")
+            # REQUIRED for the hole pass to through the ends of the first shape
+            end = [(end[0] + 0.001), (end[1] - 0.001)]
 
-        device_dims = update_device_dims(device_dims, radius_0, radius_0, thickness)
+            # Second shape (the hole)
+            if deep_access(shapes, [str(k+1), 'shape']) == "circle":
+                center_1 = deep_access(shapes, [str(k + 1), 'shape_vars', 'center'])
+                radius_1 = deep_access(shapes, [str(k + 1), 'shape_vars', 'radius'])
+                device += create_cylinder(center_1, end, radius_1, for_silo=True)
+            elif deep_access(shapes, [str(k), 'shape']) == "ellipse":
+                print("WARNING: This function is not operational!!")
+            elif deep_access(shapes, [str(k), 'shape']) == "rectangle":
+                print("WARNING: create_rectangle function has not been tested!!")
+            else:
+                print("ERROR: This shape is not supported!!")
 
-    elif layer_type[i] == "ellipse":
-        thickness = 5
-        material = "Si"
-        shape_0 = ""
+            device = color_and_finish(device, color[i], finish = "irid")
 
-    elif layer_type[i] == "rectangle":
-        thickness = 5
-        material = "Si"
-        shape_0 = "rectangle"
-        halfwidth = [3, 1]
-        end_0 = [(-1.0 * device_dims[2]), (-1.0 * device_dims[2] - thickness)]
+            device_dims = update_device_dims(device_dims, radius_0, radius_0, thickness)
 
-        device += "box\n\t{ob:c}\n\t".format(ob=123) \
-            + "<{0}, {1}, {2}>\n\t".format( (-1 * halfwidth[0]), (-1 * halfwidth[1]), end_0[0] ) \
-            + "<{0}, {1}, {2}>\n\t".format( halfwidth[0], halfwidth[1], end_0[1] )
+        elif layer_type == "ellipse":
+            material = deep_access(shapes, [str(k), 'material'])
+            shape_0 = ""
 
-        device = color_and_finish(device, color, finish = "glass")
+        elif layer_type == "rectangle":
+            material = deep_access(shapes, [str(k), 'material'])
+            center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
+            halfwidth = deep_access(shapes, [str(k+1), 'shape_vars', 'halfwidth'])
+            end = [(-1.0 * device_dims[2]), (-1.0 * device_dims[2] - thickness)]
 
-        device_dims = update_device_dims(device_dims, halfwidth[0], halfwidth[1], thickness)
+            device += create_rectangle(center, end, halfwidth)
+#            device += "box\n\t\t{ob:c}\n\t\t".format(ob=123) \
+#                + "<{0}, {1}, {2}>\n\t\t".format((center[0] - halfwidth[0]), (center[1] - halfwidth[1]), end[0]) \
+#                + "<{0}, {1}, {2}>\n\t\t".format((center[0] + halfwidth[0]), (center[1] + halfwidth[1]), end[1])
 
-    else:
-        print("\nWARNING: Invalid or unsupported layer specified.\n")
+            device = color_and_finish(device, color[i], finish = "glass")
 
-# Finish reference: ejcoyle@nyos: ~/Documents/Polyimide/PI-Cu100/render_atoms_at_interface.py
+            device_dims = update_device_dims(device_dims, halfwidth[0], halfwidth[1], thickness)
 
+        else:
+            print("\nWARNING: Invalid or unsupported layer specified.\n")
+
+# Finish references:
+#   ejcoyle@nyos: ~/Documents/Polyimide/PI-Cu100/render_atoms_at_interface.py
+#   http://www.povray.org/documentation/view/3.6.0/79/
+#   http://www.povray.org/documentation/view/3.6.1/230/
+#   http://www.f-lohmueller.de/pov_tut/addon/00_Basic_Templates/10_Ready_made_scenes/__index.htm
 
 # Substrate layer
-#lattice_dict = deep_access(device_dict, ['statepoint', 'lattice_vecs'])
-#lattice_vecs = list()
-#for v in ['a', 'b']0:
-#    tmp_vec = list()
-#    for i in ['x', 'y']:
-#        tmp_vec.append(deep_access(lattice_dict, [v, i]))
-#    lattice_vecs.append(tmp_vec)
-thickness_sub = 3
-background_sub = "Si"
-L_vecs = [[18, 0], [0, 18]]
+thickness_sub = max(1, deep_access(device_dict, ['statepoint', 'sub_layer', 'thickness']))
+background_sub = deep_access(device_dict, ['statepoint', 'sub_layer', 'background'])
+halfwidth = [(0.5 * lattice_vecs[0][0]), (0.5 * lattice_vecs[1][1])]
 
 color = [0, 0, 1]
 
 end_0 = [(-1.0 * device_dims[2]), (-1.0 * device_dims[2] - thickness_sub)]
 
-device += "box\n\t{ob:c}\n\t".format(ob=123) \
-        + "<{0}, {1}, {2}>\n\t".format( (-0.5 * L_vecs[0][0]), (-0.5 * L_vecs[1][1]), end_0[0] ) \
-        + "<{0}, {1}, {2}>\n\t".format( (0.5 * L_vecs[0][0]), (0.5 * L_vecs[1][1]), end_0[1] ) 
-#        + "pigment {ob:c} ".format(ob=123) \
-#        + "color rgb <{0}, {1}, {2}>".format(color[0], color[1], color[2]) \
-#        + "{cb:c}\n\t{cb:c}\n\n".format(cb=125)
-device = color_and_finish(device, color, finish = "metal")
+device += "box\n\t\t{ob:c}\n\t\t".format(ob=123) \
+        + "<{0}, {1}, {2}>\n\t\t".format((-1.0 * halfwidth[0]), (-1.0 * halfwidth[1]), end_0[0]) \
+        + "<{0}, {1}, {2}>\n\t\t".format(halfwidth[0], halfwidth[1], end_0[1]) 
 
-device_dims = update_device_dims(device_dims, radius_0, radius_0, thickness_sub)
+device = color_and_finish(device, color, finish = "dull")
 
+device_dims = update_device_dims(device_dims, halfwidth[0], halfwidth[1], thickness_sub)
+
+device += "{cb:c}\n\n".format(cb=125)
+
+# Display one unit cell
+# For just the one:
+#device += "object {ob:c} UnitCell {cb:c}\n".format(ob=123, cb=125)
+
+# For a bunch of them
+#lattice_vecs = [[,], [,]]
+#num_UC_x = 4
+#num_UC_y = 4
+
+device += "merge\n\t{ob:c} \n\t".format(ob=123)
+
+for i in range(num_UC_x):
+    for j in range(num_UC_y):
+        device += "object {ob:c} UnitCell translate <{0}, {1}, {2}> {cb:c}\n\t".format((i * lattice_vecs[0][0]), (j * lattice_vecs[1][1]), 0, ob=123, cb=125)
+
+device += "{cb:c}\n\n".format(cb=125)
+
+device_dims = update_device_dims(device_dims, (num_UC_x*device_dims[0]), (num_UC_y * device_dims[1]), device_dims[2])
+
+print("device:")
 print(device)
 
 ## HEADER AND CAMERA INFO
-if camera_loc == []:
+if camera_loc == [] or look_at == [] or light_loc == []:
     camera_loc, look_at, light_loc = guess_camera(device_dims, device_center, camera_style, angle = camera_angle)
 
 if camera_style == "":
@@ -200,37 +255,21 @@ header += "background {ob:c} ".format(ob=123) \
         + "location <{0}, {1}, {2}>\n\t".format(camera_loc[0], camera_loc[1], camera_loc[2])  \
         + "look_at <{0}, {1}, {2}>\n\t".format(look_at[0], look_at[1], look_at[2]) \
         + "up <{0}, {1}, {2}>\n\t".format(up_dir[0], up_dir[1], up_dir[2]) \
-        + " right <{0}, {1}, {2}>\n".format(right_dir[0], right_dir[1], right_dir[2]) \
+        + "right <{0}, {1}, {2}>\n\t".format(right_dir[0], right_dir[1], right_dir[2]) \
         + "sky <{0}, {1}, {2}>\n\t".format(up_dir[0], up_dir[1], up_dir[2]) \
         + "{cb:c}\n\n".format(cb=125)
-#        + "{cb:c}\n\n".format(cb=125)
 
-
-if write_lights:
-    if shadowless:
-        header += "light_source \n\t{ob:c} \n\t".format(ob=123) \
-                + "<{0}, {1}, {2}> \n\t".format(light_loc[0], light_loc[1], light_loc[2]) \
-                + "color rgb <1.0,1.0,1.0> \n\t" \
-                + "shadowless \n\t" \
-                + "{cb:c}\n\n".format(cb=125)
-    else:
-        header += "light_source \n\t{ob:c} \n\t".format(ob=123) \
-                + "<{0}, {1}, {2}> \n\t".format(light_loc[0], light_loc[1], light_loc[2]) \
-                + "color rgb <1.0,1.0,1.0> \n\t" \
-                + "{cb:c}\n\n".format(cb=125)
-
-    if light_at_camera == True:
-        if shadowless:
-            header += "light_source \n\t{ob:c}\n\t".format(ob=123) \
-                    + "<{0}, {1}, {2}> \n\t".format(camera_loc[0], camera_loc[1], camera_loc[2]) \
-                    + "color rgb <0.75,0.75,0.75> \n\t" \
-                    + "shadowless \n\t" \
-                    + "{cb:c}\n\n".format(cb=125)
-        else:
-            header += "light_source \n\t{ob:c}\n\t".format(ob=123) \
-                    + "<{0}, {1}, {2}> \n\t".format(camera_loc[0], camera_loc[1], camera_loc[2]) \
-                    + "color rgb <0.75,0.75,0.75> \n\t" \
-                    + "{cb:c}\n\n".format(cb=125)
+if shadowless:
+    header += "light_source \n\t{ob:c} \n\t".format(ob=123) \
+            + "<{0}, {1}, {2}> \n\t".format(light_loc[0], light_loc[1], light_loc[2]) \
+            + "color rgb <1.0,1.0,1.0> \n\t" \
+            + "shadowless \n\t" \
+            + "{cb:c}\n\n".format(cb=125)
+else:
+    header += "light_source \n\t{ob:c} \n\t".format(ob=123) \
+            + "<{0}, {1}, {2}> \n\t".format(light_loc[0], light_loc[1], light_loc[2]) \
+            + "color rgb <1.0,1.0,1.0> \n\t" \
+            + "{cb:c}\n\n".format(cb=125)
 
 # WRITE POV FILE
 fID.write(header + device)
@@ -238,7 +277,8 @@ fID.close()
 
 # RENDER
 if render == True:
-    command = "povray Input_File_Name=%s Output_File_Name=%s +H%i +W%i" % (pov_name, image_name, height, width)
+    command = "povray Input_File_Name={0} Output_File_Name={1} ".format(pov_name, image_name) \
+            + "+H{0} +W{1}".format(height, width)
 
     if display:
         command += " Display=on"
@@ -251,8 +291,10 @@ if render == True:
     if antialias:
         command += " +A"
 
+    if open_png == True:
+        command += " && eog {}".format(image_name)
+
     system(command)
     div = '------------------------------------------'
     print("write_POV: \n{0}\n{1}\n{0}".format(div,command))
 
-    system("eog {}".format(image_name) )
