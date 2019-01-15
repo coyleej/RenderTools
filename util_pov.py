@@ -60,7 +60,7 @@ def update_device_dims(device_dims, new_x, new_y, new_z):
     device_dims[2] += new_z
     return device_dims
 
-def guess_camera(device_dims, center, camera_style="perspective", angle=0):
+def guess_camera(device_dims, center=[0,0], camera_style="perspective", angle=0):
     """ This is a guess that assumes you have no idea what the camera position is.
     Can look at the device from the side (straight down the x-axis; default)
     or at an angle in the xy-plane (rotate around z-axis, *DEGREES* from x-axis). """

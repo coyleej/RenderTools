@@ -9,7 +9,13 @@ from util_pov import update_device_dims, guess_camera, color_and_finish
 from util_pov import create_cylinder, create_ellipse, create_rectangle, create_polygon
 from util import deep_access
 
-""" Generates a .pov and optionally render an image for a single device """
+""" Generates a .pov and optionally render an image from a json file.
+
+    Code makes a few assumptions:
+    - All shapes describing holes in silos are the vacuum layers
+    immediately following the shape layer.
+    - xy-plane is centered at 0.
+"""
 
 # RECTANGLE
 #json_file = "DeviceFiles/Rectangles/device.index.json.gz"
@@ -34,8 +40,8 @@ from util import deep_access
 
 # MISC
 json_file = "DeviceFiles/Test/device.index.json.gz"
-##device_id = "698bd2fc89cbb7439c2268a564569811"
-device_id = "318a5dce269fc505ef665148c36a7677"
+device_id = "698bd2fc89cbb7439c2268a564569811"
+#device_id = "318a5dce269fc505ef665148c36a7677"
 
 ####################################################
 pov_name = "temp.pov"
@@ -66,15 +72,12 @@ width = 800
 # height=800, width=4/3.0*height, up_dir=[0,0,1], right_dir=[0,1,0]
 # height=800, width=height, up_dir=[0,0,1.333], right_dir=[0,1,0]
 
-num_UC_x = 3
-num_UC_y = 3
+num_UC_x = 4
+num_UC_y = 4
 
 display = False
 render = True
 open_png = True
-
-color_dict = {"subst": [0.15, 0.15, 0.15], "Si":[0.0, 0.0, 0.0], "SiO2":[0.99, 0.99, 0.96], "fun":[1, 0, 1]}
-#"Si":[0.196, 0.298, 0.525]
 
 # FILE INPUT/OUTPUT
 
@@ -85,14 +88,13 @@ fID = open(pov_name,'w')
 
 # CREATE DEVICE
 
+color_dict = {"subst": [0.15, 0.15, 0.15], "Si":[0.0, 0.0, 0.0], "SiO2":[0.99, 0.99, 0.96], "fun":[1, 0, 1]}
+
 device_center = [0, 0]  # location in xy-plane
 device_dims = [0, 0, 0] # maximum dimensions of the final device
                         # All components must be positive; update after adding each layer
 
 device = ""             # stores the device
-device += "#include \"colors.inc\"\n" \
-        + "#include \"textures.inc\"\n"
-# default include files are in /usr/share/povray-3.7/include/
 
 # Lattice vectors
 lattice_dict = deep_access(device_dict, ['statepoint', 'lattice_vecs'])
@@ -117,6 +119,7 @@ for i in range(deep_access(device_dict, ['statepoint', 'num_layers'])):
     if deep_access(device_dict, ['statepoint', 'dev_layers', str(i)]).get('shapes') is not None:
         shapes = deep_access(device_dict, ['statepoint', 'dev_layers', str(i), 'shapes'])
         thickness = deep_access(device_dict, ['statepoint', 'dev_layers', str(i), 'thickness'])
+        end = [(-1.0 * device_dims[2]), (-1.0 * device_dims[2] - thickness)]
 
         # Determine layer types
         layer_type = []
@@ -134,9 +137,7 @@ for i in range(deep_access(device_dict, ['statepoint', 'num_layers'])):
                 if layer_type[iii] != "Vacuum" and layer_type[iii+1] == "Vacuum":
                     layer_type[iii] = "silo"
 
-        ######################
-        end = [(-1.0 * device_dims[2]), (-1.0 * device_dims[2] - thickness)]
-
+        # Write device layers
         for k in range(len(layer_type)):
 
             print(deep_access(shapes, [str(k)]))
@@ -145,19 +146,14 @@ for i in range(deep_access(device_dict, ['statepoint', 'num_layers'])):
                 material = deep_access(shapes, [str(k), 'material'])
                 center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
                 radius = deep_access(shapes, [str(k), 'shape_vars', 'radius'])
-                #end = [(-1.0 * device_dims[2]), (-1.0 * device_dims[2] - thickness)]
 
                 device += create_cylinder(center, end, radius)
                 device = color_and_finish(device, color_dict["fun"], finish = "billiard")
 
-                #device_dims = update_device_dims(device_dims, radius, radius, thickness)
                 device_dims = update_device_dims(device_dims, radius, radius, 0)
 
             elif layer_type[k] == "silo":
-                # will need to be able to search ahead to use difference function for silos
-                # a simple for loop will be incapable of generating silos
                 material = deep_access(shapes, [str(k), 'material'])
-                #end = [(-1.0 * device_dims[2]), (-1.0 * device_dims[2] - thickness)]
 
                 device += "difference \n\t\t{ob:c}\n\t\t".format(ob=123)
 
@@ -186,17 +182,16 @@ for i in range(deep_access(device_dict, ['statepoint', 'num_layers'])):
                 else:
                     print("ERROR: This shape is not supported!!")
 
-                # REQUIRED for the hole pass to through the ends of the first shape
+                # Hole(s)
+                # Required for the hole pass to through the ends of the first shape
                 end = [(end[0] + 0.001), (end[1] - 0.001)]
 
-                # Hole(s)
                 j = k + 1
-                #while j in range(len(shapes)) and layer_type[j] == "Vacuum":
                 while j < len(shapes) and layer_type[j] == "Vacuum":
                     if deep_access(shapes, [str(j), 'shape']) == "circle":
-                        center_1 = deep_access(shapes, [str(j), 'shape_vars', 'center'])
-                        radius_1 = deep_access(shapes, [str(j), 'shape_vars', 'radius'])
-                        device += create_cylinder(center_1, end, radius_1, for_silo=True)
+                        center = deep_access(shapes, [str(j), 'shape_vars', 'center'])
+                        radius = deep_access(shapes, [str(j), 'shape_vars', 'radius'])
+                        device += create_cylinder(center, end, radius, for_silo=True)
                     elif deep_access(shapes, [str(j), 'shape']) == "ellipse":
                         material = deep_access(shapes, [str(k), 'material'])
                         center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
@@ -217,10 +212,8 @@ for i in range(deep_access(device_dict, ['statepoint', 'num_layers'])):
                         print("ERROR: This shape is not supported!!")
                     j += 1
 
-                #device = color_and_finish(device, color_dict[material], finish = material)
                 device = color_and_finish(device, color_dict["fun"], finish = "billiard")
 
-                #device_dims = update_device_dims(device_dims, radius_0, radius_0, thickness)
                 device_dims = update_device_dims(device_dims, halfwidths[0], halfwidths[1], 0)
 
             elif layer_type[k] == "ellipse":
@@ -228,26 +221,21 @@ for i in range(deep_access(device_dict, ['statepoint', 'num_layers'])):
                 center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
                 halfwidths = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
                 angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
-                #end = [(-1.0 * device_dims[2]), (-1.0 * device_dims[2] - thickness)]
 
                 device += create_ellipse(center, end, halfwidths, angle)
                 device = color_and_finish(device, color_dict["SiO2"], finish = "glass")
 
-                #device_dims = update_device_dims(device_dims, halfwidths[0], halfwidths[1], thickness)
                 device_dims = update_device_dims(device_dims, halfwidths[0], halfwidths[1], 0)
-
 
             elif layer_type[k] == "rectangle":
                 material = deep_access(shapes, [str(k), 'material'])
                 center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
                 halfwidths = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
                 angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
-                #end = [(-1.0 * device_dims[2]), (-1.0 * device_dims[2] - thickness)]
 
                 device += create_rectangle(center, end, halfwidths, angle)
                 device = color_and_finish(device, color_dict["fun"], finish = "irid")
 
-                #device_dims = update_device_dims(device_dims, halfwidths[0], halfwidths[1], thickness)
                 device_dims = update_device_dims(device_dims, halfwidths[0], halfwidths[1], 0)
 
             elif layer_type[k] == "Vacuum":
@@ -275,25 +263,20 @@ device_dims = update_device_dims(device_dims, halfwidth[0], halfwidth[1], thickn
 
 device += "{cb:c}\n\n".format(cb=125)
 
-# Display one unit cell
-# For just the one:
-#device += "object {ob:c} UnitCell {cb:c}\n".format(ob=123, cb=125)
-
-# For a bunch of them
+# Display a bunch of unit cells
 device += "merge\n\t{ob:c} \n\t".format(ob=123)
 
 # Shift translation so that the original device is roughly in the center
-# subtracts 1 because one row stays at origin
-# uses modulo to subtract again if odd number
-# sends half of the remaining rows backward
 adj_x = int(0.5 * (num_UC_x - (1 + (num_UC_x - 1) % 2)))
 adj_y = int(0.5 * (num_UC_y - (1 + (num_UC_y - 1) % 2)))
+# Explanation: subtracts 1 because one row stays at origin
+# uses modulo to subtract again if odd number
+# sends half of the remaining rows backward
 
 for i in range(num_UC_x):
     for j in range(num_UC_y):
         device += "object {ob:c} UnitCell translate <{0}, {1}, {2}> {cb:c}\n\t".format( \
                 ((i - adj_x) * lattice_vecs[0][0]), ((j - adj_y) * lattice_vecs[1][1]), 0, ob=123, cb=125)
-                #(i * lattice_vecs[0][0]), (j * lattice_vecs[1][1]), 0, ob=123, cb=125)
 
 device += "{cb:c}\n\n".format(cb=125)
 
@@ -303,7 +286,7 @@ device_dims = update_device_dims(device_dims, (num_UC_x * device_dims[0]), \
 ## HEADER AND CAMERA INFO
 if camera_loc == [] or look_at == [] or light_loc == []:
     camera_loc, look_at, light_loc = \
-            guess_camera(device_dims, device_center, camera_style, angle = camera_angle)
+            guess_camera(device_dims, angle = camera_angle)
 
 if camera_style == "":
     camera_style = "perspective"
