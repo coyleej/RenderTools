@@ -57,7 +57,6 @@ def update_device_dims(device_dims, new_x, new_y, new_z):
     """ Tracks overall device dimensions to aid in guessing camera placement"""
     device_dims[0] = max(new_x, device_dims[0])
     device_dims[1] = max(new_y, device_dims[1])
-    #device_dims[2] = max(new_z, device_dims[2])
     device_dims[2] += new_z
     return device_dims
 
@@ -90,8 +89,10 @@ def guess_camera(device_dims, center, camera_style="perspective", angle=0):
     light_offset = camera_offset * 1.25 #* 4.0/3.0
     light_position[0] = (device_dims[0] + light_offset) * cos(angle - 12 * deg_to_rads)
     light_position[1] = (device_dims[1] + light_offset/1.0) * sin(angle - 12 * deg_to_rads)
-    #light_position[2] = device_dims[2] + light_offset/3.0
-    light_position[2] = camera_position[2] + light_offset/3.0
+    light_position[2] = camera_position[2] + light_offset/3.0      # light1
+    #light_position[2] = camera_position[2] + light_offset/1.0       # light2
+
+    #light_position[2] = 0
 
     print("Write_POV estimated camera parameters:")
     print("camera_position : " , camera_position)
@@ -109,15 +110,14 @@ def color_and_finish(dev_string, color, filter_ = 0, transmit = 0, finish = "dul
     http://www.povray.org/documentation/view/3.6.0/79/"""
 
     if finish == "Si" or finish == "silicon":
-        filter_ = 0.5
-        transmist = 1.5
         extra_finish = "finish \n\t\t\t{ob:c} \n\t\t\t".format(ob=123) \
-                + "ambient 0.1 \n\t\t\t" \
-                + "diffuse 0.1 \n\t\t\t" \
-                + "specular 1.0 \n\t\t\t" \
+                + "diffuse 0.01 \n\t\t\t" \
                 + "brilliance 5 \n\t\t\t" \
-                + "roughness 0.001 \n\t\t\t" \
-                + "reflection 0.4 metallic \n\t\t\t" \
+                + "phong 1 \n\t\t\t" \
+                + "phong_size 250 \n\t\t\t" \
+                + "roughness 0.01 \n\t\t\t" \
+                + "reflection <0.10, 0.10, 0.5> metallic \n\t\t\t" \
+                + " metallic \n\t\t\t" \
                 + "{cb:c}\n\t\t".format(cb=125) \
                 + "interior {ob:c} ior 4.24 {cb:c}\n\t\t".format(ob=123, cb=125)
                 # IOR taken from blender documentation: https://docs.blender.org/manual/en/latest/render/blender_render/materials/properties/transparency.html#examples
@@ -127,11 +127,12 @@ def color_and_finish(dev_string, color, filter_ = 0, transmit = 0, finish = "dul
         filter_ = 0.98
         extra_finish = "finish \n\t\t\t{ob:c} \n\t\t\t".format(ob=123) \
                 + "specular 0.6 \n\t\t\t" \
-                + "phong 0.8 \n\t\t\t" \
                 + "brilliance 5 \n\t\t\t" \
+                + "roughness 0.001 \n\t\t\t" \
                 + "reflection {ob:c} 0.0, 1.0 fresnel on {cb:c}\n\t\t\t".format(ob=123, cb=125) \
                 + "{cb:c}\n\t\t".format(cb=125) \
                 + "interior {ob:c} ior 1.45 {cb:c}\n\t\t".format(ob=123, cb=125)
+                #+ "phong 0.8 \n\t\t\t" \
 
     elif finish == "glass":
         filter_ = 0.95

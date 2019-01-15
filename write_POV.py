@@ -2,7 +2,6 @@
 # ~/Code/PovrayTools/write_POV.py
 # ~/Code/S4Signac/device_init.json
 # ~/Code/S4Signac/simulate.py
-# example: http://wiki.povray.org/content/Documentation:Tutorial_Section_2#Basic_Shapes
 
 from os import system
 import signac
@@ -13,8 +12,8 @@ from util import deep_access
 """ Generates a .pov and optionally render an image for a single device """
 
 # RECTANGLE
-json_file = "DeviceFiles/Rectangles/device.index.json.gz"
-device_id = "318a5dce269fc505ef665148c36a7677"
+#json_file = "DeviceFiles/Rectangles/device.index.json.gz"
+#device_id = "318a5dce269fc505ef665148c36a7677"
 
 # CYLINDER
 #json_file = "DeviceFiles/Cylinders/device.index.json.gz"
@@ -33,13 +32,19 @@ device_id = "318a5dce269fc505ef665148c36a7677"
 #device_id = "12b881f6b38c677000cf1e85818a0332"     # original device
 #device_id = "295ff62a2266c881b2bd83084cd8be43"      # my modified device
 
+# MISC
+json_file = "DeviceFiles/Test/device.index.json.gz"
+##device_id = "698bd2fc89cbb7439c2268a564569811"
+device_id = "318a5dce269fc505ef665148c36a7677"
+
 ####################################################
 pov_name = "temp.pov"
 image_name = "render.png"
 
 camera_loc = []
 look_at = [0,0,0]
-up_dir= [0,0,1]
+light_loc = []
+up_dir= [0,0,1.33]
 right_dir= [0,1,0]
 camera_angle = 45           # rotates camera around the z-axis
 camera_style = "perspective"
@@ -53,21 +58,23 @@ bg_color = [1.0, 1.0, 1.0]
 transparent = True
 antialias = True 
 
-height = 900
-width = 1200
+height = 800
+width = 800
 
-num_UC_x = 6
-num_UC_y = 6
+# The following camera settings generate the same dimensions, 
+# but the second one has more whitespace at top and bottom: 
+# height=800, width=4/3.0*height, up_dir=[0,0,1], right_dir=[0,1,0]
+# height=800, width=height, up_dir=[0,0,1.333], right_dir=[0,1,0]
+
+num_UC_x = 3
+num_UC_y = 3
 
 display = False
 render = True
 open_png = True
 
-color = [[1, 0, 1], [0, 1, 1], [1, 0, 0], [0, 1, 0], [1, 1, 0], [0, 0, 1]]
-Si_color = [0.196, 0.298, 0.525]
-SiO2_color = [1.0, 1.0, 0.96]
-
-color_dict = {"subst": [0, 0, 0,6], "Si":[0.196, 0.298, 0.525], "SiO2":[0.99, 0.99, 0.93], "test":[1, 0, 1]}
+color_dict = {"subst": [0.15, 0.15, 0.15], "Si":[0.0, 0.0, 0.0], "SiO2":[0.99, 0.99, 0.96], "fun":[1, 0, 1]}
+#"Si":[0.196, 0.298, 0.525]
 
 # FILE INPUT/OUTPUT
 
@@ -104,136 +111,157 @@ for v in ['a', 'b']:
 # Device layers
 device += "#declare UnitCell = "
 device += "merge\n\t{ob:c}\n\t".format(ob=123)
-#device += "union\n\t{ob:c}\n\t".format(ob=123)
 
 for i in range(deep_access(device_dict, ['statepoint', 'num_layers'])):
-#    thickness = deep_access(device_dict, ['statepoint', 'dev_layers', str(i), 'thickness'])
 
     if deep_access(device_dict, ['statepoint', 'dev_layers', str(i)]).get('shapes') is not None:
         shapes = deep_access(device_dict, ['statepoint', 'dev_layers', str(i), 'shapes'])
         thickness = deep_access(device_dict, ['statepoint', 'dev_layers', str(i), 'thickness'])
 
-        print("layer ", str(i), "\nthickness ", thickness)
+        # Determine layer types
+        layer_type = []
+        has_silo = False
+        for ii in range(len(shapes)):
+            print(deep_access(shapes, [str(ii)]))
+            if deep_access(shapes, [str(ii), 'material']) in ["Vacuum", "vacuum"]:
+                layer_type.append("Vacuum")
+                has_silo = True
+            else:
+                layer_type.append(deep_access(shapes, [str(ii), 'shape']))
 
-        # Determine shape(s) in layer
-        # WARNING: CURRENTLY VERY RUDIMENTARY!
-        # Will work on generalizing this later
-        # For now, you must deal with it as is
-        k = 0
-        if len(shapes) == 1:
-            #layer_type = deep_access(shapes, [str(k), 'shape'])
-            if deep_access(shapes, [str(k), 'shape']) == "circle":
-                layer_type = "cylinder"
-            elif deep_access(shapes, [str(k), 'shape']) == "ellipse":
-                layer_type = "ellipse"
-            elif deep_access(shapes, [str(k), 'shape']) == "rectangle":
-                layer_type = "rectangle"
-            else:
-                print("ERROR: This shape is not currently supported!")
-        elif len(shapes) == 2:
-            if deep_access(shapes, [str(k), 'material']) != "Vacuum" and \
-                    deep_access(shapes, [str(k+1), 'material']) == "Vacuum": 
-                layer_type = "silo"
-            else:
-                print("ERROR: This shape is not currently supported!")
-        else:
-            print("ERROR: This shape is not currently supported!")
+        if has_silo == True:
+            for iii in range(len(layer_type)-1):
+                if layer_type[iii] != "Vacuum" and layer_type[iii+1] == "Vacuum":
+                    layer_type[iii] = "silo"
 
         ######################
+        end = [(-1.0 * device_dims[2]), (-1.0 * device_dims[2] - thickness)]
 
-        if layer_type == "cylinder":
-            material = deep_access(shapes, [str(k), 'material'])
-            center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
-            radius = deep_access(shapes, [str(k), 'shape_vars', 'radius'])
-            end = [(-1.0 * device_dims[2]), (-1.0 * device_dims[2] - thickness)]
+        for k in range(len(layer_type)):
 
-            device += create_cylinder(center, end, radius)
-            device = color_and_finish(device, color_dict["test"], finish = "glass")
+            print(deep_access(shapes, [str(k)]))
 
-            device_dims = update_device_dims(device_dims, radius, radius, thickness)
+            if layer_type[k] == "circle":
+                material = deep_access(shapes, [str(k), 'material'])
+                center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
+                radius = deep_access(shapes, [str(k), 'shape_vars', 'radius'])
+                #end = [(-1.0 * device_dims[2]), (-1.0 * device_dims[2] - thickness)]
 
-        elif layer_type == "silo":
-            # will need to be able to search ahead to use difference function for silos
-            # a simple for loop will be incapable of generating silos
-            material = deep_access(shapes, [str(k), 'material'])
-            end = [(-1.0 * device_dims[2]), (-1.0 * device_dims[2] - thickness)]
+                device += create_cylinder(center, end, radius)
+                device = color_and_finish(device, color_dict["fun"], finish = "billiard")
 
-            device += "difference \n\t\t{ob:c}\n\t\t".format(ob=123)
+                #device_dims = update_device_dims(device_dims, radius, radius, thickness)
+                device_dims = update_device_dims(device_dims, radius, radius, 0)
 
-            # First shape
-            if deep_access(shapes, [str(k), 'shape']) == "circle":
-                center_0 = deep_access(shapes, [str(k), 'shape_vars', 'center'])
-                radius_0 = deep_access(shapes, [str(k), 'shape_vars', 'radius'])
-                device += create_cylinder(center_0, end, radius_0, for_silo=True)
-            elif deep_access(shapes, [str(k), 'shape']) == "ellipse":
-                print("WARNING: This function is not operational!!")
-            elif deep_access(shapes, [str(k), 'shape']) == "rectangle":
-                print("WARNING: create_rectangle function has not been tested!!")
+            elif layer_type[k] == "silo":
+                # will need to be able to search ahead to use difference function for silos
+                # a simple for loop will be incapable of generating silos
+                material = deep_access(shapes, [str(k), 'material'])
+                #end = [(-1.0 * device_dims[2]), (-1.0 * device_dims[2] - thickness)]
+
+                device += "difference \n\t\t{ob:c}\n\t\t".format(ob=123)
+
+                # First shape
+                if deep_access(shapes, [str(k), 'shape']) == "circle":
+                    center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
+                    radius = deep_access(shapes, [str(k), 'shape_vars', 'radius'])
+                    halfwidths = [radius, radius]           # to make things work
+                    device += create_cylinder(center, end, radius, for_silo=True)
+                elif deep_access(shapes, [str(k), 'shape']) == "ellipse":
+                    material = deep_access(shapes, [str(k), 'material'])
+                    center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
+                    halfwidths = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
+                    angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
+                    device += create_ellipse(center, end, halfwidths, angle, for_silo=True)
+                    print("WARNING: This function is not operational!!")
+                elif deep_access(shapes, [str(k), 'shape']) == "rectangle":
+                    material = deep_access(shapes, [str(k), 'material'])
+                    center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
+                    halfwidths = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
+                    angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
+                    device += create_rectangle(center, end, halfwidths, angle, for_silo=True)
+                    print("WARNING: create_rectangle function has not been tested!!")
+                elif deep_access(shapes, [str(k), 'shape']) == "polygon":
+                    print("WARNING: create_rectangle function has not been tested!!")
+                else:
+                    print("ERROR: This shape is not supported!!")
+
+                # REQUIRED for the hole pass to through the ends of the first shape
+                end = [(end[0] + 0.001), (end[1] - 0.001)]
+
+                # Hole(s)
+                j = k + 1
+                #while j in range(len(shapes)) and layer_type[j] == "Vacuum":
+                while j < len(shapes) and layer_type[j] == "Vacuum":
+                    if deep_access(shapes, [str(j), 'shape']) == "circle":
+                        center_1 = deep_access(shapes, [str(j), 'shape_vars', 'center'])
+                        radius_1 = deep_access(shapes, [str(j), 'shape_vars', 'radius'])
+                        device += create_cylinder(center_1, end, radius_1, for_silo=True)
+                    elif deep_access(shapes, [str(j), 'shape']) == "ellipse":
+                        material = deep_access(shapes, [str(k), 'material'])
+                        center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
+                        halfwidths = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
+                        angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
+                        device += create_ellipse(center, end, halfwidths, angle, for_silo=True)
+                        print("WARNING: This function is not operational!!")
+                    elif deep_access(shapes, [str(j), 'shape']) == "rectangle":
+                        material = deep_access(shapes, [str(k), 'material'])
+                        center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
+                        halfwidths = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
+                        angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
+                        device += create_rectangle(center, end, halfwidths, angle, for_silo=True)
+                        print("WARNING: create_rectangle function has not been tested!!")
+                    elif deep_access(shapes, [str(j), 'shape']) == "polygon":
+                        print("WARNING: create_rectangle function has not been tested!!")
+                    else:
+                        print("ERROR: This shape is not supported!!")
+                    j += 1
+
+                #device = color_and_finish(device, color_dict[material], finish = material)
+                device = color_and_finish(device, color_dict["fun"], finish = "billiard")
+
+                #device_dims = update_device_dims(device_dims, radius_0, radius_0, thickness)
+                device_dims = update_device_dims(device_dims, halfwidths[0], halfwidths[1], 0)
+
+            elif layer_type[k] == "ellipse":
+                material = deep_access(shapes, [str(k), 'material'])
+                center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
+                halfwidths = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
+                angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
+                #end = [(-1.0 * device_dims[2]), (-1.0 * device_dims[2] - thickness)]
+
+                device += create_ellipse(center, end, halfwidths, angle)
+                device = color_and_finish(device, color_dict["SiO2"], finish = "glass")
+
+                #device_dims = update_device_dims(device_dims, halfwidths[0], halfwidths[1], thickness)
+                device_dims = update_device_dims(device_dims, halfwidths[0], halfwidths[1], 0)
+
+
+            elif layer_type[k] == "rectangle":
+                material = deep_access(shapes, [str(k), 'material'])
+                center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
+                halfwidths = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
+                angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
+                #end = [(-1.0 * device_dims[2]), (-1.0 * device_dims[2] - thickness)]
+
+                device += create_rectangle(center, end, halfwidths, angle)
+                device = color_and_finish(device, color_dict["fun"], finish = "irid")
+
+                #device_dims = update_device_dims(device_dims, halfwidths[0], halfwidths[1], thickness)
+                device_dims = update_device_dims(device_dims, halfwidths[0], halfwidths[1], 0)
+
+            elif layer_type[k] == "Vacuum":
+                k = k
+
             else:
-                print("ERROR: This shape is not supported!!")
+                print("\nWARNING: Invalid or unsupported layer specified.\n")
 
-            # REQUIRED for the hole pass to through the ends of the first shape
-            end = [(end[0] + 0.001), (end[1] - 0.001)]
-
-            # Second shape (the hole)
-            if deep_access(shapes, [str(k+1), 'shape']) == "circle":
-                center_1 = deep_access(shapes, [str(k + 1), 'shape_vars', 'center'])
-                radius_1 = deep_access(shapes, [str(k + 1), 'shape_vars', 'radius'])
-                device += create_cylinder(center_1, end, radius_1, for_silo=True)
-            elif deep_access(shapes, [str(k), 'shape']) == "ellipse":
-                print("WARNING: This function is not operational!!")
-            elif deep_access(shapes, [str(k), 'shape']) == "rectangle":
-                print("WARNING: create_rectangle function has not been tested!!")
-            else:
-                print("ERROR: This shape is not supported!!")
-
-            #device = color_and_finish(device, color[i], finish = "irid")
-            #device = color_and_finish(device, color[i], finish = "glass")
-            device = color_and_finish(device, color_dict["SiO2"], finish = "SiO2")
-
-            device_dims = update_device_dims(device_dims, radius_0, radius_0, thickness)
-
-        elif layer_type == "ellipse":
-            material = deep_access(shapes, [str(k), 'material'])
-            center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
-            halfwidths = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
-            angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
-            end = [(-1.0 * device_dims[2]), (-1.0 * device_dims[2] - thickness)]
-
-            device += create_ellipse(center, end, halfwidths, angle)
-            device = color_and_finish(device, color_dict["SiO2"], finish = "glass")
-
-            device_dims = update_device_dims(device_dims, halfwidths[0], halfwidths[1], thickness)
-
-
-        elif layer_type == "rectangle":
-            material = deep_access(shapes, [str(k), 'material'])
-            center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
-            halfwidths = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
-            angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
-            end = [(-1.0 * device_dims[2]), (-1.0 * device_dims[2] - thickness)]
-
-            device += create_rectangle(center, end, halfwidths, angle)
-            device = color_and_finish(device, color_dict["test"], finish = "irid")
-
-            device_dims = update_device_dims(device_dims, halfwidths[0], halfwidths[1], thickness)
-
-        else:
-            print("\nWARNING: Invalid or unsupported layer specified.\n")
-
-# Finish references:
-#   ejcoyle@nyos: ~/Documents/Polyimide/PI-Cu100/render_atoms_at_interface.py
-#   http://www.povray.org/documentation/view/3.6.0/79/
-#   http://www.povray.org/documentation/view/3.6.1/230/
-#   http://www.f-lohmueller.de/pov_tut/addon/00_Basic_Templates/10_Ready_made_scenes/__index.htm
+        device_dims = update_device_dims(device_dims, 0, 0, thickness)
 
 # Substrate layer
 thickness_sub = max(1, deep_access(device_dict, ['statepoint', 'sub_layer', 'thickness']))
 background_sub = deep_access(device_dict, ['statepoint', 'sub_layer', 'background'])
 halfwidth = [(0.5 * lattice_vecs[0][0]), (0.5 * lattice_vecs[1][1])]
-
-color = [0, 0, 0.8]
-#color = [0, 0, 0]
 
 end_0 = [(-1.0 * device_dims[2]), (-1.0 * device_dims[2] - thickness_sub)]
 
@@ -241,7 +269,7 @@ device += "box\n\t\t{ob:c}\n\t\t".format(ob=123) \
         + "<{0}, {1}, {2}>\n\t\t".format((-1.0 * halfwidth[0]), (-1.0 * halfwidth[1]), end_0[0]) \
         + "<{0}, {1}, {2}>\n\t\t".format(halfwidth[0], halfwidth[1], end_0[1]) 
 
-device = color_and_finish(device, color, finish = "dull")
+device = color_and_finish(device, color_dict["subst"], finish = "dull")
 
 device_dims = update_device_dims(device_dims, halfwidth[0], halfwidth[1], thickness_sub)
 
