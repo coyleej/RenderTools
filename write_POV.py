@@ -13,8 +13,9 @@ from util import deep_access
 
     Code makes a few assumptions:
     - All shapes describing holes in silos are the vacuum layers
-    immediately following the shape layer.
-    - xy-plane is centered at 0.
+    immediately following the shape layer
+    - xy-plane is centered at 0
+    - Perspective camera style assumed unless otherwise specified
 """
 
 # RECTANGLE
@@ -54,7 +55,7 @@ up_dir= [0,0,1.33]
 right_dir= [0,1,0]
 camera_angle = 45           # rotates camera around the z-axis
 camera_style = "perspective"
-# Currently only perspective is supported
+# Currently only perspective and orthographic are supported
 # Full list of style options : perspective (default)| orthographic | fisheye |
 #   ultra_wide_angle | omnimax | panoramic | cylinder CylinderType | spherical
 #   for orthographic you might have to use e.g. "orthographic angle 30"
@@ -140,7 +141,7 @@ for i in range(deep_access(device_dict, ['statepoint', 'num_layers'])):
         # Write device layers
         for k in range(len(layer_type)):
 
-            print(deep_access(shapes, [str(k)]))
+            #print(deep_access(shapes, [str(k)]))
 
             if layer_type[k] == "circle":
                 material = deep_access(shapes, [str(k), 'material'])
@@ -184,27 +185,27 @@ for i in range(deep_access(device_dict, ['statepoint', 'num_layers'])):
 
                 # Hole(s)
                 # Required for the hole pass to through the ends of the first shape
-                end = [(end[0] + 0.001), (end[1] - 0.001)]
+                end2 = [(end[0] + 0.001), (end[1] - 0.001)]
 
                 j = k + 1
                 while j < len(shapes) and layer_type[j] == "Vacuum":
                     if deep_access(shapes, [str(j), 'shape']) == "circle":
                         center = deep_access(shapes, [str(j), 'shape_vars', 'center'])
                         radius = deep_access(shapes, [str(j), 'shape_vars', 'radius'])
-                        device += create_cylinder(center, end, radius, for_silo=True)
+                        device += create_cylinder(center, end2, radius, for_silo=True)
                     elif deep_access(shapes, [str(j), 'shape']) == "ellipse":
                         material = deep_access(shapes, [str(k), 'material'])
                         center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
                         halfwidths = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
                         angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
-                        device += create_ellipse(center, end, halfwidths, angle, for_silo=True)
+                        device += create_ellipse(center, end2, halfwidths, angle, for_silo=True)
                         print("WARNING: This function is not operational!!")
                     elif deep_access(shapes, [str(j), 'shape']) == "rectangle":
                         material = deep_access(shapes, [str(k), 'material'])
                         center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
                         halfwidths = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
                         angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
-                        device += create_rectangle(center, end, halfwidths, angle, for_silo=True)
+                        device += create_rectangle(center, end2, halfwidths, angle, for_silo=True)
                         print("WARNING: create_rectangle function has not been tested!!")
                     elif deep_access(shapes, [str(j), 'shape']) == "polygon":
                         print("WARNING: create_rectangle function has not been tested!!")
@@ -239,6 +240,7 @@ for i in range(deep_access(device_dict, ['statepoint', 'num_layers'])):
                 device_dims = update_device_dims(device_dims, halfwidths[0], halfwidths[1], 0)
 
             elif layer_type[k] == "Vacuum":
+                # Python is too smart; the for loop won't let me intentionally skip a value
                 k = k
 
             else:
@@ -280,17 +282,26 @@ for i in range(num_UC_x):
 
 device += "{cb:c}\n\n".format(cb=125)
 
-device_dims = update_device_dims(device_dims, (num_UC_x * device_dims[0]), \
-        (num_UC_y * device_dims[1]), device_dims[2])
-
 ## HEADER AND CAMERA INFO
-if camera_loc == [] or look_at == [] or light_loc == []:
-    camera_loc, look_at, light_loc = \
-            guess_camera(device_dims, angle = camera_angle)
+
+# Cap how far out the camera will go when replicating unit cell
+device_dims = update_device_dims(device_dims, \
+        (min(5, num_UC_x) * device_dims[0]), \
+        (min(5, num_UC_y) * device_dims[1]), \
+        device_dims[2])
 
 if camera_style == "":
     camera_style = "perspective"
     print("Assumed camera_style : ", camera_style)
+
+if camera_style == "orthographic":
+    camera_options = "angle 30"
+else:
+    camera_options = ""
+
+if camera_loc == [] or look_at == [] or light_loc == []:
+    camera_loc, look_at, light_loc = \
+            guess_camera(device_dims, camera_style, angle = camera_angle, center=[0, 0])
 
 header = "#version 3.7;\n" 
 header += "global_settings {ob:c} assumed_gamma 1.0 {cb:c}\n\n".format(ob=123, cb=125) 
@@ -298,7 +309,7 @@ header += "background {ob:c} ".format(ob=123) \
         + "color rgb <{0}, {1}, {2}> ".format(bg_color[0], bg_color[1], bg_color[2]) \
         + "{cb:c}\n\n".format(cb=125) \
         + "camera \n\t{ob:c}\n\t".format(ob=123) \
-        + "{0}\n\t".format(camera_style) \
+        + "{0} {1} \n\t".format(camera_style, camera_options) \
         + "location <{0}, {1}, {2}>\n\t".format(camera_loc[0], camera_loc[1], camera_loc[2])  \
         + "look_at <{0}, {1}, {2}>\n\t".format(look_at[0], look_at[1], look_at[2]) \
         + "up <{0}, {1}, {2}>\n\t".format(up_dir[0], up_dir[1], up_dir[2]) \

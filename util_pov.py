@@ -60,7 +60,7 @@ def update_device_dims(device_dims, new_x, new_y, new_z):
     device_dims[2] += new_z
     return device_dims
 
-def guess_camera(device_dims, center=[0,0], camera_style="perspective", angle=0):
+def guess_camera(device_dims, camera_style="perspective", angle=0, center=[0, 0]):
     """ This is a guess that assumes you have no idea what the camera position is.
     Can look at the device from the side (straight down the x-axis; default)
     or at an angle in the xy-plane (rotate around z-axis, *DEGREES* from x-axis). """
@@ -74,25 +74,27 @@ def guess_camera(device_dims, center=[0,0], camera_style="perspective", angle=0)
 
     if camera_style == "perspective":
         x_offset = 1.2
+        z_scale = 1.0
+    elif camera_style == "orthographic":
+        x_offset = 1.2
+        z_scale = 1.0
     else:
         x_offset = 1.2
+        z_scale = 1.0
         print("WARNING: Camera parameters have not been optimized for this style!")
 
+    # Offset for x,y-dimensions
     camera_offset = x_offset * max(device_dims) 
-    camera_z_scale = 1.0            # was 0.5 
 
     camera_position[0] = (camera_offset + device_dims[0]) * cos(angle)
     camera_position[1] = (camera_offset + device_dims[0]) * sin(angle)
-    camera_position[2] = camera_z_scale * (device_dims[2])
+    camera_position[2] = z_scale * (device_dims[2])
     camera_look_at = [center[0], center[1], (-0.66 * device_dims[2])]
 
     light_offset = camera_offset * 1.25 #* 4.0/3.0
     light_position[0] = (device_dims[0] + light_offset) * cos(angle - 12 * deg_to_rads)
     light_position[1] = (device_dims[1] + light_offset/1.0) * sin(angle - 12 * deg_to_rads)
     light_position[2] = camera_position[2] + light_offset/3.0      # light1
-    #light_position[2] = camera_position[2] + light_offset/1.0       # light2
-
-    #light_position[2] = 0
 
     print("Write_POV estimated camera parameters:")
     print("camera_position : " , camera_position)
