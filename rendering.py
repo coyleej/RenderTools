@@ -7,10 +7,33 @@ def write_pov(device_dict, pov_name, image_name, \
         up_dir = [0, 0, 1.33], right_dir = [0, 1, 0], sky = [0, 0, 1.33], \
         shadowless = False, \
         bg_color = [1.0, 1.0, 1.0], transparent = True, antialias = True, \
+        use_default_colors = True, custom_color = [0, 0.667, 0.667], \
+        use_finish = "", custom_finish = "", \
         display = False, render = True, open_png = True):
 
     """ Generates a .pov and optionally render an image from a json file.
 
+        Color options: 
+        use_default_colors = True will set the color based on the material:
+        "Si" | "SiO2" | "subst"
+
+        use_default_colors = False allows for use of a custom color, which is
+        specified in custom_color. Currently only one custom color per device,
+        and it defaults to #00aaaa (Windows 95 desktop color)
+
+        Available finishes: 
+        "material" | "Si" | "SiO2" | "glass" | "metal" | "irid" | 
+        | "billiard" | *"dull" | "custom"
+        (* indicates the default)
+        Specifying "material" will use the material ("Si" or "SiO2") finish in
+        order to accomodate multiple material types in a device.
+        The substrate will always have the "dull" finish.
+
+        If using the "custom" finish, the finish details must be specified in the
+        custom_finish variable (see color_and_finish function for examples) or
+        it will default to "dull".
+
+        Camera:
         Currently only perspective and orthographic styles are supported.
         Full list of povray options : perspective (default)| orthographic | fisheye |
         ultra_wide_angle | omnimax | panoramic | cylinder CylinderType | spherical
@@ -26,7 +49,7 @@ def write_pov(device_dict, pov_name, image_name, \
         immediately following the shape layer
         - xy-plane is centered at 0
         - Perspective camera style assumed unless otherwise specified
-        - Orthographic camera automatically adds angle 30.
+        - Orthographic camera by default assigns angle 30.
     """
 
     from os import system
@@ -37,7 +60,7 @@ def write_pov(device_dict, pov_name, image_name, \
     fID = open(pov_name,'w')
 
     color_dict = {"subst": [0.15, 0.15, 0.15], "Si":[0.0, 0.0, 0.0], \
-            "SiO2":[0.99, 0.99, 0.96], "fun":[1, 0, 1]}
+            "SiO2":[0.99, 0.99, 0.96]} #, "fun":[1, 0, 1], "fun2":[0, 0.667, 0.667]}
 
     device_dims = [0, 0, 0] # maximum dimensions of the final device
                             # Components must be positive; update after adding each layer
@@ -93,7 +116,10 @@ def write_pov(device_dict, pov_name, image_name, \
                     radius = deep_access(shapes, [str(k), 'shape_vars', 'radius'])
 
                     device += create_cylinder(center, end, radius)
-                    device = color_and_finish(device, color_dict["fun"], finish = "billiard")
+
+                    device = color_and_finish(device, color_dict, material, \
+                            use_default_colors, use_finish = use_finish, \
+                            custom_finish = custom_finish)
 
                     device_dims = update_device_dims(device_dims, radius, radius, 0)
 
@@ -157,7 +183,9 @@ def write_pov(device_dict, pov_name, image_name, \
                             print("ERROR: This shape is not supported!!")
                         j += 1
 
-                    device = color_and_finish(device, color_dict["fun"], finish = "billiard")
+                    device = color_and_finish(device, color_dict, material, \
+                            use_default_colors, use_finish = use_finish, \
+                            custom_finish = custom_finish)
 
                     device_dims = update_device_dims(device_dims, halfwidths[0], halfwidths[1], 0)
 
@@ -168,7 +196,10 @@ def write_pov(device_dict, pov_name, image_name, \
                     angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
 
                     device += create_ellipse(center, end, halfwidths, angle)
-                    device = color_and_finish(device, color_dict["SiO2"], finish = "glass")
+
+                    device = color_and_finish(device, color_dict, material, \
+                            use_default_colors, use_finish = use_finish, \
+                            custom_finish = custom_finish)
 
                     device_dims = update_device_dims(device_dims, halfwidths[0], halfwidths[1], 0)
 
@@ -179,7 +210,10 @@ def write_pov(device_dict, pov_name, image_name, \
                     angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
 
                     device += create_rectangle(center, end, halfwidths, angle)
-                    device = color_and_finish(device, color_dict["fun"], finish = "irid")
+
+                    device = color_and_finish(device, color_dict, material, \
+                            use_default_colors, use_finish = use_finish, \
+                            custom_finish = custom_finish)
 
                     device_dims = update_device_dims(device_dims, halfwidths[0], halfwidths[1], 0)
 
@@ -196,6 +230,7 @@ def write_pov(device_dict, pov_name, image_name, \
             device_dims = update_device_dims(device_dims, 0, 0, thickness)
 
     # Substrate layer
+    material = "subst"
     thickness_sub = max(1, deep_access(device_dict, ['statepoint', 'sub_layer', 'thickness']))
     background_sub = deep_access(device_dict, ['statepoint', 'sub_layer', 'background'])
     halfwidth = [(0.5 * lattice_vecs[0][0]), (0.5 * lattice_vecs[1][1])]
@@ -206,7 +241,9 @@ def write_pov(device_dict, pov_name, image_name, \
             + "<{0}, {1}, {2}>\n\t\t".format((-1.0 * halfwidth[0]), (-1.0 * halfwidth[1]), end_0[0]) \
             + "<{0}, {1}, {2}>\n\t\t".format(halfwidth[0], halfwidth[1], end_0[1]) 
 
-    device = color_and_finish(device, color_dict["subst"], finish = "dull")
+    device = color_and_finish(device, color_dict, material, \
+            use_default_colors, use_finish = "dull", \
+            custom_finish = custom_finish)
 
     device_dims = update_device_dims(device_dims, halfwidth[0], halfwidth[1], thickness_sub)
 
@@ -305,4 +342,3 @@ def write_pov(device_dict, pov_name, image_name, \
     print("write_POV: Render with: \n{0}\n{1}\n{0}".format(div,command))
 
     return
-

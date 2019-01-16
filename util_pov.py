@@ -102,16 +102,24 @@ def guess_camera(device_dims, camera_style="perspective", angle=0, center=[0, 0]
 
     return camera_position, camera_look_at, light_position
 
-def color_and_finish(dev_string, color, filter_ = 0, transmit = 0, finish = "dull"):
+def color_and_finish(dev_string, color_dict, material, use_default_colors, \
+        filter_ = 0, transmit = 0, use_finish = "dull", custom_finish = ""):
     """ Sets the color and transmission of the object and adds to the string.
     The filter and transmit terms are both 0 by default.
     Do not remove the underscore from filter_, as filter is a function in python.
     Reference explaining rgbft:
     http://www.povray.org/documentation/view/3.6.1/230/ 
     POVRay finish examples:
-    http://www.povray.org/documentation/view/3.6.0/79/"""
+    http://www.povray.org/documentation/view/3.6.0/79/
+    """
 
-    if finish == "Si" or finish == "silicon":
+    print(type(material), material)
+    print(color_dict)
+
+    if use_finish == "material":
+        use_finish = material
+
+    if use_finish == "Si" or use_finish == "silicon":
         extra_finish = "finish \n\t\t\t{ob:c} \n\t\t\t".format(ob=123) \
                 + "diffuse 0.01 \n\t\t\t" \
                 + "brilliance 5 \n\t\t\t" \
@@ -122,10 +130,9 @@ def color_and_finish(dev_string, color, filter_ = 0, transmit = 0, finish = "dul
                 + " metallic \n\t\t\t" \
                 + "{cb:c}\n\t\t".format(cb=125) \
                 + "interior {ob:c} ior 4.24 {cb:c}\n\t\t".format(ob=123, cb=125)
-                # IOR taken from blender documentation: https://docs.blender.org/manual/en/latest/render/blender_render/materials/properties/transparency.html#examples
+                # IOR taken from blender: https://docs.blender.org/manual/en/latest/render/blender_render/materials/properties/transparency.html#examples
 
-    elif finish == "SiO2":
-        extra_finish = ""
+    elif use_finish == "SiO2":
         filter_ = 0.98
         extra_finish = "finish \n\t\t\t{ob:c} \n\t\t\t".format(ob=123) \
                 + "specular 0.6 \n\t\t\t" \
@@ -134,9 +141,8 @@ def color_and_finish(dev_string, color, filter_ = 0, transmit = 0, finish = "dul
                 + "reflection {ob:c} 0.0, 1.0 fresnel on {cb:c}\n\t\t\t".format(ob=123, cb=125) \
                 + "{cb:c}\n\t\t".format(cb=125) \
                 + "interior {ob:c} ior 1.45 {cb:c}\n\t\t".format(ob=123, cb=125)
-                #+ "phong 0.8 \n\t\t\t" \
 
-    elif finish == "glass":
+    elif use_finish == "glass":
         filter_ = 0.95
         extra_finish = "finish \n\t\t\t{ob:c} \n\t\t\t".format(ob=123) \
                 + "specular 0.6 \n\t\t\t" \
@@ -145,12 +151,8 @@ def color_and_finish(dev_string, color, filter_ = 0, transmit = 0, finish = "dul
                 + "reflection {ob:c} 0.2, 1.0 fresnel on {cb:c}\n\t\t\t".format(ob=123, cb=125) \
                 + "{cb:c}\n\t\t".format(cb=125) \
                 + "interior {ob:c} ior 1.5 {cb:c}\n\t\t".format(ob=123, cb=125)
-                #+ "phong 0.8 \n\t\t\t" \
-                #+ "reflection 0.2 \n\t\t\t" \
-                #+ "{cb:c}\n\t\t".format(cb=125) \
-                #+ "interior {ob:c} ior 1.5 {cb:c}\n\t\t".format(ob=123, cb=125)
 
-    elif finish == "metal":
+    elif use_finish == "metal":
         extra_finish = "finish \n\t\t\t{ob:c} \n\t\t\t".format(ob=123) \
                 + "emission 0.1 \n\t\t\t" \
                 + "diffuse 0.1 \n\t\t\t" \
@@ -158,9 +160,8 @@ def color_and_finish(dev_string, color, filter_ = 0, transmit = 0, finish = "dul
                 + "roughness 0.001 \n\t\t\t" \
                 + "reflection 0.5 metallic \n\t\t\t" \
                 + "{cb:c}\n\t\t".format(cb=125)
-                #+ "ambient 0.1 \n\t\t\t" \ # ambient replaced by emission in 3.7
 
-    elif finish == "irid":
+    elif use_finish == "irid":
         filter_ = 0.7
         extra_finish = "finish \n\t\t\t{ob:c} \n\t\t\t".format(ob=123) \
                 + "phong 0.5 \n\t\t\t" \
@@ -170,9 +171,8 @@ def color_and_finish(dev_string, color, filter_ = 0, transmit = 0, finish = "dul
                 + "turbulence 0.5 {cb:c}\n\t\t\t".format(cb=125) \
                 + "{cb:c}\n\t\t".format(cb=125) \
                 + "interior {ob:c} ior 1.5 {cb:c}\n\t\t".format(ob=123, cb=125)
-                #+ "phong 0.1 \n\t\t\t" \
 
-    elif finish == "billiard":
+    elif use_finish == "billiard":
         extra_finish = "finish \n\t\t\t{ob:c} \n\t\t\t".format(ob=123) \
                 + "ambient 0.3 \n\t\t\t" \
                 + "diffuse 0.8 \n\t\t\t" \
@@ -180,15 +180,22 @@ def color_and_finish(dev_string, color, filter_ = 0, transmit = 0, finish = "dul
                 + "roughness 0.005 \n\t\t\t" \
                 + "metallic 0.5 \n\t\t\t" \
                 + "{cb:c}\n\t\t".format(cb=125)
-                #+ "ambient 0.8 \n\t\t\t" \ # ambient replaced by emission in 3.7
+
+    elif use_finish == "custom":
+        extra_finish = custom_finish
 
     # color declaration for ALL finishes
+    if use_default_colors:
+        color = color_dict[material]
+    else:
+        color = custom_color
+
     dev_string += "pigment {ob:c} ".format(ob=123) \
             + "color rgbft <{0}, {1}, {2}, {3}, {4}> ".format(color[0], color[1], color[2], filter_, transmit) \
             + "{cb:c}\n\t\t".format(cb=125)
 
     # add the extra bits describing the finish
-    if finish != "dull":
+    if use_finish != "dull":
         dev_string += extra_finish 
 
     dev_string += "{cb:c}\n\n\t".format(cb=125)
