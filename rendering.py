@@ -102,18 +102,12 @@ def write_pov(device_dict, pov_name, image_name, \
     number_of_layers = deep_access(device_dict, ['statepoint', 'num_layers'])
 
     # Set up custom color dictionary
-    print(custom_colors)
-
     orig_custom_colors = deepcopy(custom_colors)
 
     if not use_default_colors:
-
         while len(custom_colors) < 2.5 * number_of_layers:
-            print("HI!")
             for i in range(len(orig_custom_colors)):
                 custom_colors.append(orig_custom_colors[i])
-
-    print(custom_colors)
 
     c = 0       # Counter for incrementing through colors
 
