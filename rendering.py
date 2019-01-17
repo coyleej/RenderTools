@@ -2,69 +2,123 @@ def write_pov(device_dict, pov_name, image_name, \
         height = 800, width = 800, \
         num_UC_x = 5, num_UC_y = 5, \
         camera_style = "perspective", \
-        camera_rotate = 45, ortho_angle = 30, \
+        camera_rotate = 60, ortho_angle = 30, \
         camera_loc = [], look_at = [0,0,0], light_loc = [], \
         up_dir = [0, 0, 1.33], right_dir = [0, 1, 0], sky = [0, 0, 1.33], \
         shadowless = False, \
         bg_color = [1.0, 1.0, 1.0], transparent = True, antialias = True, \
-        use_default_colors = True, custom_color = [0, 0.667, 0.667], \
+        use_default_colors = True, custom_colors = [[0, 0.667, 0.667]], \
         use_finish = "", custom_finish = "", \
         display = False, render = True, open_png = True):
 
     """ Generates a .pov and optionally render an image from a json file.
+        device_dict, pov_name, and image_name are the only required 
+        values.
+        - device_dict is the dictionary entry from the json file
+        - pov_name is the name for the generated .pov file
+        - image_name is the name for the image that will be rendered
+
+        By default, the code will generate a .pov file, render an image
+        and open it post-render with eog.
+
+        The code will always include (in STDOUT) the command to render
+        the image with the selected render options, even if it is only
+        creating a .pov file (not rendering).
+
+        Rendering options:
+        transparent : the background will be transparent
+        antialias : can turn antialiasing on or off
+        display : will display render progress
+        render : call povray to render the image if True
+        open_png : will open a successfully rendered image
 
         Color options: 
-        use_default_colors = True will set the color based on the material:
-        "Si" | "SiO2" | "subst"
+        bg_color = background color 
 
-        use_default_colors = False allows for use of a custom color, which is
-        specified in custom_color. Currently only one custom color per device,
-        and it defaults to #00aaaa (Windows 95 desktop color)
+        use_default_colors 
+         = True will set the color based on the material.
+        Current materials: "Si" | "SiO2" | "subst"
+         = False allows for use of a custom color, which
+        is specified in custom_color. Currently only one custom color per
+        device, and it defaults to #00aaaa (Windows 95 desktop color)
 
-        Available finishes: 
+        Included finishes: 
         "material" | "Si" | "SiO2" | "glass" | "metal" | "irid" | 
         | "billiard" | *"dull" | "custom"
         (* indicates the default)
-        Specifying "material" will use the material ("Si" or "SiO2") finish in
-        order to accomodate multiple material types in a device.
-        The substrate will always have the "dull" finish.
+        Specifying "material" will use the appropriate material ("Si" 
+        or "SiO2") finish in order to accomodate multiple material types 
+        in a device. The substrate will always have the "dull" finish.
 
-        If using the "custom" finish, the finish details must be specified in the
-        custom_finish variable (see color_and_finish function for examples) or
-        it will default to "dull".
+        If using the "custom" finish, the finish details must be specified 
+        in the custom_finish variable (see color_and_finish function for 
+        examples) or it will default to "dull".
+
+        Substrate color and finish:
+        Dull,  dark grey. Ccannot be modified by the user.
 
         Camera:
         Currently only perspective and orthographic styles are supported.
-        Full list of povray options : perspective (default)| orthographic | fisheye |
-        ultra_wide_angle | omnimax | panoramic | cylinder CylinderType | spherical
-        for orthographic you might have to use e.g. "orthographic angle 30"
+
+        If no camera is specified, it will default to perspective.
+
+        The orthographic camera will automatically assign angle 30; 
+        assign other angles by changing ortho_angle.
+
+        If any of the color and light parameters are missing, the code 
+        will guess the appropriate values. The distance between the camera 
+        ond the central unit cell is determined by the number of unit 
+        cells, but capped at the distance calculated for 5 unit cells.
+
+        The directions up, right, and sky determine image scaling and 
+        which dimension points in which direction. These can be modified,
+        but there's no real need for that.
 
         The following camera settings generate the same dimensions, 
         but the second one has more whitespace at top and bottom: 
-        height=800, width=4/3.0*height, up_dir=[0,0,1], right_dir=[0,1,0]
-        height=800, width=height, up_dir=[0,0,1.333], right_dir=[0,1,0]
+        height=800, width=4/3.0*height, up_dir=[0,0,1], right_dir=[0,1,0], sky=up_dir
+        height=800, width=height, up_dir=[0,0,1.333], right_dir=[0,1,0], sky=up_dir
 
-        Code makes a few assumptions:
+        Some additional assumptions:
         - All shapes describing holes in silos are the vacuum layers
         immediately following the shape layer
         - xy-plane is centered at 0
-        - Perspective camera style assumed unless otherwise specified
-        - Orthographic camera by default assigns angle 30.
     """
 
     from os import system
+    from copy import deepcopy
     from util import deep_access
     from util_pov import update_device_dims, guess_camera, color_and_finish
     from util_pov import create_cylinder, create_ellipse, create_rectangle, create_polygon
 
     fID = open(pov_name,'w')
 
-    color_dict = {"subst": [0.15, 0.15, 0.15], "Si":[0.0, 0.0, 0.0], \
-            "SiO2":[0.99, 0.99, 0.96]} #, "fun":[1, 0, 1], "fun2":[0, 0.667, 0.667]}
+    default_color_dict = {
+            "subst": [0.15, 0.15, 0.15], 
+            "Si":[0.2, 0.2, 0.2], 
+            "SiO2":[0.99, 0.99, 0.96]
+            }
 
-    device_dims = [0, 0, 0] # maximum dimensions of the final device
-                            # Components must be positive; update after adding each layer
-    device = ""             # stores the device
+    number_of_layers = deep_access(device_dict, ['statepoint', 'num_layers'])
+
+    # Set up custom color dictionary
+    print(custom_colors)
+
+    orig_custom_colors = deepcopy(custom_colors)
+
+    if not use_default_colors:
+
+        while len(custom_colors) < 2.5 * number_of_layers:
+            print("HI!")
+            for i in range(len(orig_custom_colors)):
+                custom_colors.append(orig_custom_colors[i])
+
+    print(custom_colors)
+
+    c = 0       # Counter for incrementing through colors
+
+    device_dims = [0, 0, 0] # Tracks dimensions of the unit cell
+    device = ""             # Will store the device
 
     # Lattice vectors
     lattice_dict = deep_access(device_dict, ['statepoint', 'lattice_vecs'])
@@ -76,7 +130,7 @@ def write_pov(device_dict, pov_name, image_name, \
         lattice_vecs.append(tmp_vec)
 
     # Zero layer
-    # currently no need to render anything from this layer
+    # Currently no need to render anything from this layer
     #background_0L = deep_access(device_dict, ["statepoint", "zero_layer", "background"])
     #thickness_0L = deep_access(device_dict, ["statepoint", "zero_layer", "thickness"])
 
@@ -84,7 +138,8 @@ def write_pov(device_dict, pov_name, image_name, \
     device += "#declare UnitCell = "
     device += "merge\n\t{ob:c}\n\t".format(ob=123)
 
-    for i in range(deep_access(device_dict, ['statepoint', 'num_layers'])):
+    #for i in range(deep_access(device_dict, ['statepoint', 'num_layers'])):
+    for i in range(number_of_layers):
 
         if deep_access(device_dict, ['statepoint', 'dev_layers', str(i)]).get('shapes') is not None:
             shapes = deep_access(device_dict, ['statepoint', 'dev_layers', str(i), 'shapes'])
@@ -95,7 +150,6 @@ def write_pov(device_dict, pov_name, image_name, \
             layer_type = []
             has_silo = False
             for ii in range(len(shapes)):
-                print(deep_access(shapes, [str(ii)]))
                 if deep_access(shapes, [str(ii), 'material']) in ["Vacuum", "vacuum"]:
                     layer_type.append("Vacuum")
                     has_silo = True
@@ -117,9 +171,10 @@ def write_pov(device_dict, pov_name, image_name, \
 
                     device += create_cylinder(center, end, radius)
 
-                    device = color_and_finish(device, color_dict, material, \
-                            use_default_colors, use_finish = use_finish, \
-                            custom_finish = custom_finish)
+                    device = color_and_finish(device, default_color_dict, material, \
+                            use_default_colors, custom_color = custom_colors[c], \
+                            use_finish = use_finish, custom_finish = custom_finish)
+                    c += 1
 
                     device_dims = update_device_dims(device_dims, radius, radius, 0)
 
@@ -183,9 +238,10 @@ def write_pov(device_dict, pov_name, image_name, \
                             print("ERROR: This shape is not supported!!")
                         j += 1
 
-                    device = color_and_finish(device, color_dict, material, \
-                            use_default_colors, use_finish = use_finish, \
-                            custom_finish = custom_finish)
+                    device = color_and_finish(device, default_color_dict, material, \
+                            use_default_colors, custom_color = custom_colors[c], \
+                            use_finish = use_finish, custom_finish = custom_finish)
+                    c += 1
 
                     device_dims = update_device_dims(device_dims, halfwidths[0], halfwidths[1], 0)
 
@@ -197,9 +253,10 @@ def write_pov(device_dict, pov_name, image_name, \
 
                     device += create_ellipse(center, end, halfwidths, angle)
 
-                    device = color_and_finish(device, color_dict, material, \
-                            use_default_colors, use_finish = use_finish, \
-                            custom_finish = custom_finish)
+                    device = color_and_finish(device, default_color_dict, material, \
+                            use_default_colors, custom_color = custom_colors[c], \
+                            use_finish = use_finish, custom_finish = custom_finish)
+                    c += 1
 
                     device_dims = update_device_dims(device_dims, halfwidths[0], halfwidths[1], 0)
 
@@ -211,9 +268,10 @@ def write_pov(device_dict, pov_name, image_name, \
 
                     device += create_rectangle(center, end, halfwidths, angle)
 
-                    device = color_and_finish(device, color_dict, material, \
-                            use_default_colors, use_finish = use_finish, \
-                            custom_finish = custom_finish)
+                    device = color_and_finish(device, default_color_dict, material, \
+                            use_default_colors, custom_color = custom_colors[c], \
+                            use_finish = use_finish, custom_finish = custom_finish)
+                    c += 1
 
                     device_dims = update_device_dims(device_dims, halfwidths[0], halfwidths[1], 0)
 
@@ -221,7 +279,7 @@ def write_pov(device_dict, pov_name, image_name, \
                     print("WARNING: create_polygon function has not been tested!!")
 
                 elif layer_type[k] == "Vacuum":
-                    # Python is too smart; the for loop won't let me intentionally skip a value
+                    # Python is too smart; it won't let me intentionally skip with k += 1
                     k = k
 
                 else:
@@ -235,29 +293,29 @@ def write_pov(device_dict, pov_name, image_name, \
     background_sub = deep_access(device_dict, ['statepoint', 'sub_layer', 'background'])
     halfwidth = [(0.5 * lattice_vecs[0][0]), (0.5 * lattice_vecs[1][1])]
 
-    end_0 = [(-1.0 * device_dims[2]), (-1.0 * device_dims[2] - thickness_sub)]
+    end = [(-1.0 * device_dims[2]), (-1.0 * device_dims[2] - thickness_sub)]
 
     device += "box\n\t\t{ob:c}\n\t\t".format(ob=123) \
-            + "<{0}, {1}, {2}>\n\t\t".format((-1.0 * halfwidth[0]), (-1.0 * halfwidth[1]), end_0[0]) \
-            + "<{0}, {1}, {2}>\n\t\t".format(halfwidth[0], halfwidth[1], end_0[1]) 
+            + "<{0}, {1}, {2}>\n\t\t".format((-1.0 * halfwidth[0]), (-1.0 * halfwidth[1]), end[0]) \
+            + "<{0}, {1}, {2}>\n\t\t".format(halfwidth[0], halfwidth[1], end[1]) 
 
-    device = color_and_finish(device, color_dict, material, \
-            use_default_colors, use_finish = "dull", \
-            custom_finish = custom_finish)
+    device = color_and_finish(device, default_color_dict, material, \
+            use_default_colors = True, use_finish = "dull")
 
     device_dims = update_device_dims(device_dims, halfwidth[0], halfwidth[1], thickness_sub)
 
     device += "{cb:c}\n\n".format(cb=125)
 
-    # Display a bunch of unit cells
+    # Replicate unit cell
     device += "merge\n\t{ob:c} \n\t".format(ob=123)
 
     # Shift translation so that the original device is roughly in the center
     adj_x = int(0.5 * (num_UC_x - (1 + (num_UC_x - 1) % 2)))
     adj_y = int(0.5 * (num_UC_y - (1 + (num_UC_y - 1) % 2)))
-    # Explanation: subtracts 1 because one row stays at origin
-    # uses modulo to subtract again if odd number
-    # sends half of the remaining rows backward
+    # Explanation: 
+    # Subtracts 1 because one row stays at origin
+    # Uses modulo to subtract again if odd number
+    # Sends half of the remaining rows backward
 
     for i in range(num_UC_x):
         for j in range(num_UC_y):
@@ -276,7 +334,6 @@ def write_pov(device_dict, pov_name, image_name, \
 
     if camera_style == "":
         camera_style = "perspective"
-        print("Assumed camera_style : ", camera_style)
 
     if camera_style == "orthographic":
         camera_options = "angle {0}".format(str(ortho_angle))
@@ -294,7 +351,7 @@ def write_pov(device_dict, pov_name, image_name, \
             + "{cb:c}\n\n".format(cb=125) \
             + "camera \n\t{ob:c}\n\t".format(ob=123) \
             + "{0} {1} \n\t".format(camera_style, camera_options) \
-            + "location <{0}, {1}, {2}>\n\t".format(camera_loc[0], camera_loc[1], camera_loc[2])  \
+            + "location <{0}, {1}, {2}>\n\t".format(camera_loc[0], camera_loc[1], camera_loc[2]) \
             + "look_at <{0}, {1}, {2}>\n\t".format(look_at[0], look_at[1], look_at[2]) \
             + "up <{0}, {1}, {2}>\n\t".format(up_dir[0], up_dir[1], up_dir[2]) \
             + "right <{0}, {1}, {2}>\n\t".format(right_dir[0], right_dir[1], right_dir[2]) \
