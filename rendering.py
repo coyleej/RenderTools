@@ -109,6 +109,8 @@ def write_pov(device_dict, pov_name, image_name, \
             for i in range(len(orig_custom_colors)):
                 custom_colors.append(orig_custom_colors[i])
 
+    print(custom_colors)
+
     c = 0       # Counter for incrementing through colors
 
     device_dims = [0, 0, 0] # Tracks dimensions of the unit cell
@@ -168,7 +170,9 @@ def write_pov(device_dict, pov_name, image_name, \
                     device = color_and_finish(device, default_color_dict, material, \
                             use_default_colors, custom_color = custom_colors[c], \
                             use_finish = use_finish, custom_finish = custom_finish)
-                    c += 1
+
+                    if not use_default_colors:
+                        c += 1
 
                     device_dims = update_device_dims(device_dims, radius, radius, 0)
 
@@ -235,7 +239,9 @@ def write_pov(device_dict, pov_name, image_name, \
                     device = color_and_finish(device, default_color_dict, material, \
                             use_default_colors, custom_color = custom_colors[c], \
                             use_finish = use_finish, custom_finish = custom_finish)
-                    c += 1
+
+                    if not use_default_colors:
+                        c += 1
 
                     device_dims = update_device_dims(device_dims, halfwidths[0], halfwidths[1], 0)
 
@@ -250,7 +256,9 @@ def write_pov(device_dict, pov_name, image_name, \
                     device = color_and_finish(device, default_color_dict, material, \
                             use_default_colors, custom_color = custom_colors[c], \
                             use_finish = use_finish, custom_finish = custom_finish)
-                    c += 1
+
+                    if not use_default_colors:
+                        c += 1
 
                     device_dims = update_device_dims(device_dims, halfwidths[0], halfwidths[1], 0)
 
@@ -265,7 +273,9 @@ def write_pov(device_dict, pov_name, image_name, \
                     device = color_and_finish(device, default_color_dict, material, \
                             use_default_colors, custom_color = custom_colors[c], \
                             use_finish = use_finish, custom_finish = custom_finish)
-                    c += 1
+
+                    if not use_default_colors:
+                        c += 1
 
                     device_dims = update_device_dims(device_dims, halfwidths[0], halfwidths[1], 0)
 
