@@ -143,7 +143,7 @@ def color_and_finish(dev_string, default_color_dict, material, use_default_color
 
     if use_finish == "Si" or use_finish == "silicon":
         extra_finish = "finish \n\t\t\t{ob:c} \n\t\t\t".format(ob=123) \
-                + "diffuse 0.01 \n\t\t\t" \
+                + "diffuse 0.2 \n\t\t\t" \
                 + "brilliance 5 \n\t\t\t" \
                 + "phong 1 \n\t\t\t" \
                 + "phong_size 250 \n\t\t\t" \
@@ -153,6 +153,7 @@ def color_and_finish(dev_string, default_color_dict, material, use_default_color
                 + "{cb:c}\n\t\t".format(cb=125) \
                 + "interior {ob:c} ior 4.24 {cb:c}\n\t\t".format(ob=123, cb=125)
                 # IOR taken from blender
+                #+ "diffuse 0.01 \n\t\t\t" \
 
     elif use_finish == "SiO2":
         filter_ = 0.98
@@ -174,13 +175,24 @@ def color_and_finish(dev_string, default_color_dict, material, use_default_color
                 + "{cb:c}\n\t\t".format(cb=125) \
                 + "interior {ob:c} ior 1.5 {cb:c}\n\t\t".format(ob=123, cb=125)
 
-    elif use_finish == "metal":
+    elif use_finish == "dull_metal":
         extra_finish = "finish \n\t\t\t{ob:c} \n\t\t\t".format(ob=123) \
                 + "emission 0.1 \n\t\t\t" \
                 + "diffuse 0.1 \n\t\t\t" \
                 + "specular 1.0 \n\t\t\t" \
                 + "roughness 0.001 \n\t\t\t" \
                 + "reflection 0.5 metallic \n\t\t\t" \
+                + " metallic \n\t\t\t" \
+                + "{cb:c}\n\t\t".format(cb=125)
+
+    elif use_finish == "bright_metal":
+        extra_finish = "finish \n\t\t\t{ob:c} \n\t\t\t".format(ob=123) \
+                + "emission 0.2 \n\t\t\t" \
+                + "diffuse 0.3 \n\t\t\t" \
+                + "specular 0.8 \n\t\t\t" \
+                + "roughness 0.01 \n\t\t\t" \
+                + "reflection 0.5 metallic \n\t\t\t" \
+                + " metallic \n\t\t\t" \
                 + "{cb:c}\n\t\t".format(cb=125)
 
     elif use_finish == "irid":
@@ -206,6 +218,9 @@ def color_and_finish(dev_string, default_color_dict, material, use_default_color
     elif use_finish == "custom":
         extra_finish = custom_finish
 
+    else:
+        extra_finish = ""
+
     # Color declaration for ALL finishes
     if use_default_colors:
         color = default_color_dict[material]
@@ -218,7 +233,8 @@ def color_and_finish(dev_string, default_color_dict, material, use_default_color
             + " {cb:c}\n\t\t".format(cb=125)
 
     # Add the extra bits describing the finish
-    if use_finish != "dull":
+    #if use_finish != "dull":
+    if extra_finish:
         dev_string += extra_finish 
 
     dev_string += "{cb:c}\n\n\t".format(cb=125)

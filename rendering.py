@@ -5,7 +5,7 @@ def write_pov(device_dict, pov_name, image_name, \
         camera_rotate = 60, ortho_angle = 30, \
         camera_loc = [], look_at = [0,0,0], light_loc = [], \
         up_dir = [0, 0, 1.33], right_dir = [0, 1, 0], sky = [0, 0, 1.33], \
-        shadowless = False, \
+        shadowless = False, add_edge_buffer = False, \
         bg_color = [1.0, 1.0, 1.0], transparent = True, antialias = True, \
         use_default_colors = True, custom_colors = [[0, 0.667, 0.667]], \
         use_finish = "", custom_finish = "", \
@@ -43,8 +43,8 @@ def write_pov(device_dict, pov_name, image_name, \
         device, and it defaults to #00aaaa (Windows 95 desktop color)
 
         Included finishes: 
-        "material" | "Si" | "SiO2" | "glass" | "metal" | "irid" | 
-        | "billiard" | *"dull" | "custom"
+        "material" | "Si" | "SiO2" | "glass" | "dull_metal" | "bright_metal" |
+        | "irid" | "billiard" | *"dull" | "custom"
         (* indicates the default)
         Specifying "material" will use the appropriate material ("Si" 
         or "SiO2") finish in order to accomodate multiple material types 
@@ -56,6 +56,10 @@ def write_pov(device_dict, pov_name, image_name, \
 
         Substrate color and finish:
         Dull,  dark grey. Ccannot be modified by the user.
+
+        Optional buffer:
+        Can add one unit cell thickness to substrate to minimize washout
+        from background by setting add_edge_buffer = True
 
         Camera:
         Currently only perspective and orthographic styles are supported.
@@ -104,12 +108,11 @@ def write_pov(device_dict, pov_name, image_name, \
     # Set up custom color dictionary
     orig_custom_colors = deepcopy(custom_colors)
 
+    # Assumes no more than THREE shapes per layer
     if not use_default_colors:
-        while len(custom_colors) < 2.5 * number_of_layers:
+        while len(custom_colors) < 3 * number_of_layers:
             for i in range(len(orig_custom_colors)):
                 custom_colors.append(orig_custom_colors[i])
-
-    print(custom_colors)
 
     c = 0       # Counter for incrementing through colors
 
@@ -141,6 +144,7 @@ def write_pov(device_dict, pov_name, image_name, \
             shapes = deep_access(device_dict, ['statepoint', 'dev_layers', str(i), 'shapes'])
             thickness = deep_access(device_dict, ['statepoint', 'dev_layers', str(i), 'thickness'])
             end = [(-1.0 * device_dims[2]), (-1.0 * device_dims[2] - thickness)]
+            # end = [top, bottom]
 
             # Determine layer types
             layer_type = []
@@ -324,9 +328,26 @@ def write_pov(device_dict, pov_name, image_name, \
     for i in range(num_UC_x):
         for j in range(num_UC_y):
             device += "object {ob:c} UnitCell translate <{0}, {1}, {2}> {cb:c}\n\t".format( \
-                    ((i - adj_x) * lattice_vecs[0][0]), ((j - adj_y) * lattice_vecs[1][1]), 0, ob=123, cb=125)
+                    ((i - adj_x) * lattice_vecs[0][0]), ((j - adj_y) * lattice_vecs[1][1]), 0, \
+                    ob=123, cb=125)
 
     device += "{cb:c}\n\n".format(cb=125)
+
+    # Add buffer around the edge to minimize reflection washout
+    if add_edge_buffer:
+        min_x = -1.0 * (adj_x + 1) * lattice_vecs[0][0]
+        max_x = (num_UC_x - adj_x) * lattice_vecs[1][1]
+        min_y = -1.0 * (adj_y + 1) * lattice_vecs[0][0]
+        max_y = (num_UC_y - adj_y) * lattice_vecs[1][1]
+        #end = unchanged from original substrate box
+        #end = [(-1.0 * device_dims[2]), (-1.0 * device_dims[2] - 0.001)]
+
+        device += "box\n\t\t{ob:c}\n\t\t".format(ob=123) \
+                + "<{0}, {1}, {2}>\n\t\t".format(min_x, min_y, (end[1])) \
+                + "<{0}, {1}, {2}>\n\t\t".format(max_x, max_y, (end[0])) 
+
+        device = color_and_finish(device, default_color_dict, material, \
+                use_default_colors = True, use_finish = "dull")
 
     ## HEADER AND CAMERA INFO
 
