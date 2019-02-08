@@ -335,10 +335,10 @@ def write_pov(device_dict, pov_name, image_name, \
 
     # Add buffer around the edge to minimize reflection washout
     if add_edge_buffer:
-        min_x = -1.0 * (adj_x + 1) * lattice_vecs[0][0]
-        max_x = (num_UC_x - adj_x) * lattice_vecs[1][1]
-        min_y = -1.0 * (adj_y + 1) * lattice_vecs[0][0]
-        max_y = (num_UC_y - adj_y) * lattice_vecs[1][1]
+        min_x = -1.0 * (adj_x + 1.5) * lattice_vecs[0][0]
+        max_x = (num_UC_x - adj_x + 0.5) * lattice_vecs[1][1]
+        min_y = -1.0 * (adj_y + 1.5) * lattice_vecs[0][0]
+        max_y = (num_UC_y - adj_y + 0.5) * lattice_vecs[1][1]
         #end = unchanged from original substrate box
         #end = [(-1.0 * device_dims[2]), (-1.0 * device_dims[2] - 0.001)]
 
