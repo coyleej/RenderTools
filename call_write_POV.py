@@ -6,17 +6,18 @@ from rendering import write_pov
 #device_id = "318a5dce269fc505ef665148c36a7677"
 
 # CYLINDER
-#json_file = "DeviceFiles/Cylinders/device.index.json.gz"
+json_file = "DeviceFiles/Cylinders/device.index.json.gz"
 #device_id = "318a5dce269fc505ef665148c36a7677"
+device_id = "27e5abfcc1ac54f500b8c4dcdf2c64d3"  # device render for Eric
 
 # ELLIPSE
 #json_file = "DeviceFiles/Ellipse/device.index.json.gz"
 #device_id = "318a5dce269fc505ef665148c36a7677"
 
 # SILO
-json_file = "DeviceFiles/Silos/device.index.json.gz"
+#json_file = "DeviceFiles/Silos/device.index.json.gz"
 #device_id = "698bd2fc89cbb7439c2268a564569811"
-device_id = "ba263aa69972dfe6815121e83a28c923"      # device render for Eric
+#device_id = "ba263aa69972dfe6815121e83a28c923"      # device render for Eric
 
 #MOTHEYE
 #json_file = "DeviceFiles/MothEye/device.index.json.gz"
@@ -29,17 +30,26 @@ device_id = "ba263aa69972dfe6815121e83a28c923"      # device render for Eric
 #device_id = "318a5dce269fc505ef665148c36a7677"
 
 ####################################################
-pov_name = "temp.pov"
-image_name = "render.png"
+pov_name = "cyl_glass8.pov"
+image_name = "cyl_glass8.png"
 
 with signac.Collection.open(json_file, compresslevel=1) as d_index:
     device_dict = list(d_index.find(filter={"_id": device_id}))[0]
 
-height = 500
-num_UC = 7
+height = 800
+num_UC = 8
+
+#extra_finish = "finish \n\t\t\t{ob:c} \n\t\t\t".format(ob=123) \
+#        + "metallic 0.5 \n\t\t\t" \
+#        + "{cb:c}\n\t\t".format(cb=125)
 
 extra_finish = "finish \n\t\t\t{ob:c} \n\t\t\t".format(ob=123) \
-        + "metallic 0.5 \n\t\t\t" \
+        + "emission 0.2 \n\t\t\t" \
+        + "diffuse 0.3 \n\t\t\t" \
+        + "specular 0.8 \n\t\t\t" \
+        + "roughness 0.01 \n\t\t\t" \
+        + "reflection <0, 0, 1>  metallic \n\t\t\t" \
+        + " metallic \n\t\t\t" \
         + "{cb:c}\n\t\t".format(cb=125)
 
 custom_colors = [
@@ -47,9 +57,9 @@ custom_colors = [
 #        [1.000, 0.506, 0.000], 
 #        [1.000, 0.957, 0.000], 
 #        [0.027, 0.824, 0.804], 
-#       [0.024, 0.678, 1.000] 
-        [0.000, 0.000, 1.000], 
+#        [0.024, 0.678, 1.000], 
         [0.212, 0.211, 0.835],
+        [0.000, 0.000, 1.000], 
         [1.000, 0.000, 0.000]
 ##        [0.298, 0.687, 0.314]
 ##        [1.000, 0.271, 0.000]

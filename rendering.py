@@ -7,86 +7,146 @@ def write_pov(device_dict, pov_name, image_name, \
         up_dir = [0, 0, 1.33], right_dir = [0, 1, 0], sky = [0, 0, 1.33], \
         shadowless = False, add_edge_buffer = False, \
         bg_color = [1.0, 1.0, 1.0], transparent = True, antialias = True, \
-        use_default_colors = True, custom_colors = [[0, 0.667, 0.667]], \
+        use_default_colors = True, custom_colors = [[0, 0.667, 0.667, 0, 0]], \
         use_finish = "", custom_finish = "", \
         display = False, render = True, open_png = True):
 
-    """ Generates a .pov and optionally render an image from a json file.
-        device_dict, pov_name, and image_name are the only required 
-        values.
-        - device_dict is the dictionary entry from the json file
-        - pov_name is the name for the generated .pov file
-        - image_name is the name for the image that will be rendered
+    """ 
+    Generates a .pov and optionally render an image from a json file.
+    device_dict, pov_name, and image_name are the only required 
+    values.
+      * device_dict is the dictionary entry from the json file
+      * pov_name is the name for the generated .pov file
+      * image_name is the name for the image that will be rendered
 
-        By default, the code will generate a .pov file, render an image
-        and open it post-render with eog.
+    By default, the code will generate a .pov file, render an image
+    and open it post-render with eog.
 
-        The code will always include (in STDOUT) the command to render
-        the image with the selected render options, even if it is only
-        creating a .pov file (not rendering).
+    The code will always include (in STDOUT) the command to render
+    the image with the selected render options, even if it is only
+    creating a .pov file (not rendering).
 
-        Rendering options:
-        transparent : the background will be transparent
-        antialias : can turn antialiasing on or off
-        display : will display render progress
-        render : call povray to render the image if True
-        open_png : will open a successfully rendered image
+    The color and finish of the device can be specified by the user 
+    via the ``color_and_finish`` function. The substrate will always 
+    be a dull, dark grey; this cannot be modified by the user.
 
-        Color options: 
-        bg_color = background color 
+    The following camera settings generate the same dimensions, 
+    but the second one has more whitespace at top and bottom: 
+    height=800, width=4/3.0*height, up_dir=[0,0,1], right_dir=[0,1,0], sky=up_dir
+    height=800, width=height, up_dir=[0,0,1.333], right_dir=[0,1,0], sky=up_dir
 
-        use_default_colors 
-         = True will set the color based on the material.
-        Current materials: "Si" | "SiO2" | "subst"
-         = False allows for use of a custom color, which
-        is specified in custom_color. Currently only one custom color per
-        device, and it defaults to #00aaaa (Windows 95 desktop color)
+    Some additional assumptions:
+    * All shapes describing holes in silos are the vacuum layers 
+      immediately following the shape layer
+    * xy-plane is centered at 0
 
-        Included finishes: 
-        "material" | "Si" | "SiO2" | "glass" | "dull_metal" | "bright_metal" |
-        | "irid" | "billiard" | *"dull" | "custom"
-        (* indicates the default)
-        Specifying "material" will use the appropriate material ("Si" 
-        or "SiO2") finish in order to accomodate multiple material types 
-        in a device. The substrate will always have the "dull" finish.
+    :param device_dict: Dictionary entry from a json file
+    :type device_dict: dict
 
-        If using the "custom" finish, the finish details must be specified 
-        in the custom_finish variable (see color_and_finish function for 
-        examples) or it will default to "dull".
+    :param pov_name: Name of the .pov file
+    :type pov_name: str
 
-        Substrate color and finish:
-        Dull,  dark grey. Ccannot be modified by the user.
+    :param image_name: Name of the rendered image
+    :type image_name: str
 
-        Optional buffer:
-        Can add one unit cell thickness to substrate to minimize washout
-        from background by setting add_edge_buffer = True
+    :param height: Image height (default 800)
+    :type height: int
 
-        Camera:
-        Currently only perspective and orthographic styles are supported.
+    :param width, Image width (default 800)
+    :type width: int
 
-        If no camera is specified, it will default to perspective.
+    :param num_UC_x: Number of unit cells in the y direction (default 5)
+    :type num_UC_x: int 
 
-        The orthographic camera will automatically assign angle 30; 
-        assign other angles by changing ortho_angle.
+    :param num_UC_y: Number of unit cells in the y direction (default 5)
+    :type num_UC_y: int 
 
-        If any of the color and light parameters are missing, the code 
-        will guess the appropriate values. The distance between the camera 
-        ond the central unit cell is determined by the number of unit 
-        cells, but capped at the distance calculated for 5 unit cells.
+    :param camera_style: Camera style; currently supported options are 
+                         "perspective" (default), and "orthographic"; 
+                         other POV-Ray camera styles may be tried if 
+                         desired, but there is no promise that they will 
+                         work as expected
+    :type camera_style: str
 
-        The directions up, right, and sky determine image scaling and 
-        which dimension points in which direction. These can be modified,
-        but there's no real need for that.
+    :param camera_rotate: Rotates the camera location about the z-axis 
+                          (degrees, default 60) 
+    :type camera_rotate: int 
 
-        The following camera settings generate the same dimensions, 
-        but the second one has more whitespace at top and bottom: 
-        height=800, width=4/3.0*height, up_dir=[0,0,1], right_dir=[0,1,0], sky=up_dir
-        height=800, width=height, up_dir=[0,0,1.333], right_dir=[0,1,0], sky=up_dir
+    :param ortho_angle: Width of the field of view for the orthographic 
+                        camera (degrees, default 30) 
+    :type ortho_angle: int
 
-        Some additional assumptions:
-        - All shapes describing holes in silos are the vacuum layers
-        immediately following the shape layer
-        - xy-plane is centered at 0
+    :param camera_loc: Location of the camera, can be guessed with 
+                       ``guess_camera`` (default empty) 
+    :type camera_loc: list 
+
+    :param look_at: The point the camera looks at (default [0,0,0]) 
+    :type look_at: list
+
+    :param light_loc: The location of the light source, can be guessed with 
+                      ``guess_camera`` (default empty)
+    :type light_loc: list
+
+    :param shadowless: Use a shadowless light source (default False)
+    :type shadowless: bool
+
+    :param up_dir: Tells POV-Ray the relative height of the screen; 
+                   controls the aspect ratio together with ``right-dir`` 
+                   (default [0, 0, 1.33]) 
+    :type up_dir: list
+
+    :param right_dir: Tells POV-Ray the relative width of the screen; 
+                       controls the aspect ratio together with ``up_dir`` 
+                       (default [0, 1, 0]) 
+    :type right_dir: list
+
+    :param sky: Sets the camera orientation, e.g. can hold the camera 
+                upside down (default [0, 0, 1.33])
+    :type sky: list
+
+    :param add_edge_buffer: Adds one unit cell thickness to substrate 
+                            to minimize washout from background by 
+                            setting to True (default False)
+    :type add_edge_buffer: bool
+
+    :param bg_color: Sets the background color (default [1.0, 1.0, 1.0])
+    :type bg_color: list
+
+    :param transparent: Sets background transparency (default True)
+    :type transparent: bool
+
+    :param antialias: Turns antialiasing on (default True)
+    :type antialias: bool
+
+    :param use_default_colors: Determine color selection: True will set 
+                               the color based on the material specified 
+                               in ``device_dict``. False allows for use of 
+                               a custom color, which is specified in 
+                               ``custom_color`` (default True)
+    :type use_default_colors: bool
+
+    :param custom_colors: Define a list of custom RBGFT colors (each color is 
+                          a list of five values); each shape can be assigned
+                          its own color (default [[0, 0.667, 0.667, 0, 0]])
+    :type custom_colors: list
+
+    :param use_finish: The finish on the device; see ``color_and_finish`` 
+                       for the full list of options (default "dull")
+    :type use_finish: str
+
+    :param custom_finish: User-specified custom finish, see ``color_and_finish`` 
+                          for formatting (default "dull")
+    :type custom_finish: str
+
+    :param display: Display render progress if ``render=True`` (default False)
+    :type display: bool
+
+    :param render: Tells POV-Ray to render the image (default True)
+    :type render: bool
+
+    :param open_png: Opens rendered image with eog if the rendering is
+                     successful (default True)
+    :type open_png: bool
     """
 
     from os import system

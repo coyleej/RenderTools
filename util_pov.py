@@ -1,5 +1,23 @@
 def create_cylinder(center, end, radius, for_silo=False):
-    """ Creates a circular pillar """
+    """ 
+    Creates povray instructions for a cylindrical pillar 
+
+    :param center: Point on the x,y-plane where the shape is centered
+    :type center: list
+
+    :param end: The lower and upper limits on the z-dimensions
+    :type end: list
+      
+    :param radius: Cylinder radius
+    :type radius: float
+
+    :param for_silo: Adjusts the syntax if the shape is part of a silo
+    :type for_silo: bool
+
+    :return: POV-Ray code describing the cylinder
+    :rtype: string
+
+    """
     cyl_string = "cylinder \n\t\t{ob:c}\n\t\t ".format(ob=123) \
             + "<{0}, {1}, {2}>, \n\t\t".format(center[0], center[1], end[0]) \
             + "<{0}, {1}, {2}>, \n\t\t".format(center[0], center[1], end[1]) 
@@ -12,7 +30,27 @@ def create_cylinder(center, end, radius, for_silo=False):
     return cyl_string
 
 def create_ellipse(center, end, halfwidths, angle=0, for_silo=False):
-    """ Creates an elliptical pillar """
+    """ 
+    Creates povray instructions for a ellipical pillar 
+
+    :param center: Point on the x,y-plane where the shape is centered
+    :type center: list
+
+    :param end: The lower and upper limits on the z-dimensions
+    :type end: list
+      
+    :param halfwidths: Semi-major and semi-minor axes of the ellipse
+    :type halfwidths: list
+
+    :param angle: Rotation angle (deg) of the ellipse about its center
+    :type angle: float
+
+    :param for_silo: Adjusts the syntax if the shape is part of a silo
+    :type for_silo: bool
+
+    :return: POV-Ray code describing the elliptical cylinder
+    :rtype: string
+    """
     ellipse_string = "cylinder \n\t\t{ob:c}\n\t\t ".format(ob=123) \
             + "<{0}, {1}, {2}>, \n\t\t".format(center[0], center[1], end[0]) \
             + "<{0}, {1}, {2}>, 1 \n\t\t".format(center[0], center[1], end[1]) \
@@ -26,7 +64,27 @@ def create_ellipse(center, end, halfwidths, angle=0, for_silo=False):
     return ellipse_string
 
 def create_rectangle(center, end, halfwidths, angle=0, for_silo=False):
-    """ Creates a rectangular box """
+    """ 
+    Creates povray instructions for a rectangular box
+
+    :param center: Point on the x,y-plane where the shape is centered
+    :type center: list
+
+    :param end: The lower and upper limits on the z-dimensions
+    :type end: list
+
+    :param halfwidths: Halfwidths describing lengths in the x-, y-dims
+    :type halfwidths: list
+
+    :param angle: Rotation angle (deg) of the rectangle about its center
+    :type angle: float
+
+    :param for_silo: Adjusts the syntax if the shape is part of a silo
+    :type for_silo: bool
+
+    :return: POV-Ray code describing the box
+    :rtype: string
+    """
     rect_string = "box\n\t\t{ob:c}\n\t\t".format(ob=123) \
             + "<{0}, ".format(center[0] - halfwidths[0]) \
             + "{0}, {1}>\n\t\t".format((center[1] - halfwidths[1]), end[0]) \
@@ -41,7 +99,33 @@ def create_rectangle(center, end, halfwidths, angle=0, for_silo=False):
     return rect_string
 
 def create_polygon(center, end, num_points, points, angle=0, for_silo=False):
-    """ Creates a polygon. CURRENTLY UNTESTED!!"""
+    """ 
+    Creates povray instructions for a polygon/prism
+
+    ** Currently untested!! **
+
+    :param center: Point on the x,y-plane where the shape is centered
+    :type center: list
+
+    :param end: The lower and upper limits on the z-dimensions
+    :type end: list
+
+    :param num_points: The number of vertices
+    :type num_points: list
+
+    :param points: List of x-,y-coordinates in counter-clockwise order
+    :type points: list
+
+    :param angle: Rotation angle (deg) of the polygon about its center
+    :type angle: float
+
+    :param for_silo: Adjusts the syntax if the shape is part of a silo
+    :type for_silo: bool
+
+    :return: POV-Ray code describing the prism
+    :rtype: string
+    """
+
     print("\ncreate_polygon is UNTESTED!\n")
     poly_string = "prism\n\t\t{ob:c}\n\t\t".format(ob=123) \
             + "linear_sweep \n\t\tlinear_spline \n\t\t" \
@@ -62,16 +146,56 @@ def create_polygon(center, end, num_points, points, angle=0, for_silo=False):
     return
 
 def update_device_dims(device_dims, new_x, new_y, new_z):
-    """ Tracks overall device dimensions to aid in guessing camera placement"""
+    """
+    Tracks maximum unit device dimensions to aid in camera placement
+    
+    These dimensions will always be positive, even though the device 
+    is built with the top at z=0.
+
+    :param device_dims: Existing device dimensions
+    :type device_dims: list
+
+    :param new_x: x-dimensions of the newest layer
+    :type new_x: float
+
+    :param new_y: x-dimensions of the newest layer
+    :type new_y: float
+
+    :param new_z: Thickness of the newest layer
+    :type new_z: float
+
+    :return: Updated device dimensions
+    :rtype: list
+    """
     device_dims[0] = max(new_x, device_dims[0])
     device_dims[1] = max(new_y, device_dims[1])
     device_dims[2] += new_z
     return device_dims
 
 def guess_camera(device_dims, camera_style="perspective", angle=0, center=[0, 0]):
-    """ This is a guess that assumes you have no idea what the camera position is.
-    Can look at the device from the side (angle = 0) or at an angle in the 
-    xy-plane (rotate around z-axis, *DEGREES* from x-axis). """
+    """ 
+    Guesses the camera location if you have no idea what a good camera 
+    position is. Can look at the device from the side (angle = 0) or at an 
+    angle in the xy-plane (rotate around z-axis, *DEGREES* from x-axis). 
+    It has been optimized to give decent results, though fine-tuning in the
+    .pov file is always encouraged.
+    
+    :param device_dims: Dimensions of the unit cell
+    :type device_dims: list
+
+    :param camera_style: The desired camera style, currently accepts perspective and orthographic
+    :type camera_sylte: string
+
+    :param angle: Rotates the camera around the z-axis (in degrees)
+                  0 will look down the x-axis at the side of the device
+    :type angle: float
+    
+    :param center: The center of the device
+    :type center: list
+
+    :return: Tuple containing the camera position, camera look at location, and the light position
+    :rtype: tuple
+    """
     from math import sin, cos, pi
 
     camera_position = [0, 0, 0]
@@ -111,31 +235,61 @@ def guess_camera(device_dims, camera_style="perspective", angle=0, center=[0, 0]
     return camera_position, camera_look_at, light_position
 
 def color_and_finish(dev_string, default_color_dict, material, use_default_colors, \
-        custom_color = [0, 0.6667, 0.667], filter_ = 0, transmit = 0, \
-        use_finish = "dull", custom_finish = ""):
-    """ Sets the color and transmission of the object and adds to the string.
-        The filter and transmit terms are both 0 by default.
-        Do not remove the underscore from filter_, as filter is a function in python.
+        custom_color = [0, 0.6667, 0.667, 0, 0], use_finish = "dull", \
+        custom_finish = ""):
+    """ 
+    Sets the color and finish of the object and appends this to the device string.
+    The filter and transmit terms are both 0 by default.
+    Do not remove the underscore from filter_, as filter is a function in python.
 
-        Color options: 
-        use_default_colors = True will set the color based on the material
-        Current materials are: "Si" | "SiO2" | "subst"
+    Users may specify their own custom color scheme or use the default, 
+    which is based on the material type specified in the device file.
 
-        use_default_colors = False allows for use of a custom color, which is
-        specified in custom_color. Currently only one custom color per device,
-        and it defaults to #00aaaa (Windows 95 desktop color)
+    Available finishes: see ``use_finish``  parameter for details. 
+    Specifying "material" will use the material finish (currently "Si", 
+    "SiO2", or "subst") finish in order to accomodate multiple material 
+    types in a device. The substrate will always have the "dull" finish.
 
-        Available finishes: ("dull" is the default)
-        "material" | "Si" | "SiO2" | "glass" | "metal" | "irid" | 
-        | "billiard" | "dull" | "custom"
-    
-        Specifying "material" will use the material ("Si" or "SiO2") finish in
-        order to accomodate multiple material types in a device.
-        The substrate will always have the "dull" finish.
+    If using the "custom" finish, the finish details must be specified in the
+    custom_finish variable or it will default to "dull".
 
-        If using the "custom" finish, the finish details must be specified in the
-        custom_finish variable (see color_and_finish function for examples) or
-        it will default to "dull".
+    :param dev_string: String describing the device
+    :type dev_string: str
+
+    :param default_color_dict: Dictionary containing the default finishes for the 
+                               various material types
+    :type default_color_dict: dict
+
+    :param use_default_colors: Boolean to select which color set to use. True will 
+                               assign colors based on the material type ("Si", 
+                               "SiO2", and "subst"). False will use user-assigned 
+                               custom colors.
+    :type use_default_colors: bool
+
+    :param custom_color: RGBFT values describing a single color. If you set 
+                         ``use_default_colors=False`` but forget to specify a 
+                         custom color, it will use #00aaaa (the Windows 95 
+                         default desktop color).
+
+                         RGB values must be in the range [0,1]. F and T are
+                         filter and transmit, respectively. F and T are 
+                         optional and both default to 0.
+    :type custom_color: list
+
+    :param filter_: Sets the filter value (default 0)
+    :type filter_: float
+
+    :param transmit: Sets the transmit value (default 0) 
+    :type transmit: float
+
+    :param use_finish: Select the finish that you want. Current options are:
+                       "material", "Si", "SiO2", "glass", "bright_metal", 
+                       "dull_metal", "irid", "billiard", "dull", "custom"
+    :type use_finish: str
+
+    :param custom_finish: User-defined custom finish. Set ``use_finish=custom``
+                          to call this option.
+    :type custom_finish: str
     """
 
     if use_finish == "material":
@@ -153,7 +307,6 @@ def color_and_finish(dev_string, default_color_dict, material, use_default_color
                 + "{cb:c}\n\t\t".format(cb=125) \
                 + "interior {ob:c} ior 4.24 {cb:c}\n\t\t".format(ob=123, cb=125)
                 # IOR taken from blender
-                #+ "diffuse 0.01 \n\t\t\t" \
 
     elif use_finish == "SiO2":
         filter_ = 0.98
@@ -227,9 +380,13 @@ def color_and_finish(dev_string, default_color_dict, material, use_default_color
     else:
         color = custom_color
 
+    if len(color) == 3:
+        color.append(0)     # filter
+        color.append(0)     # transmit
+
     dev_string += "pigment {ob:c} ".format(ob=123) \
             + "color rgbft " \
-            + "<{0}, {1}, {2}, {3}, {4}>".format(color[0], color[1], color[2], filter_, transmit) \
+            + "<{0}, {1}, {2}, {3}, {4}>".format(color[0], color[1], color[2], color[3], color[4]) \
             + " {cb:c}\n\t\t".format(cb=125)
 
     # Add the extra bits describing the finish
