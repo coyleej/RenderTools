@@ -1,23 +1,23 @@
-def write_pov(device_dict, pov_name, image_name, \
-        height = 800, width = 800, \
-        num_UC_x = 5, num_UC_y = 5, \
-        camera_style = "perspective", \
-        camera_rotate = 60, ortho_angle = 30, \
-        camera_loc = [], look_at = [0,0,0], light_loc = [], \
-        up_dir = [0, 0, 1.33], right_dir = [0, 1, 0], sky = [0, 0, 1.33], \
-        shadowless = False, add_edge_buffer = False, \
-        bg_color = [1.0, 1.0, 1.0], transparent = True, antialias = True, \
-        use_default_colors = True, custom_colors = [[0, 0.667, 0.667, 0, 0]], \
-        use_finish = "", custom_finish = "", \
-        display = False, render = True, open_png = True):
+def write_pov(device_dict, pov_name, image_name, 
+    height = 800, width = 800, 
+    num_UC_x = 5, num_UC_y = 5, 
+    camera_style = "perspective", 
+    camera_rotate = 60, ortho_angle = 30, 
+    camera_loc = [], look_at = [0,0,0], light_loc = [], 
+    up_dir = [0, 0, 1.33], right_dir = [0, 1, 0], sky = [0, 0, 1.33], 
+    shadowless = False, add_edge_buffer = False, 
+    bg_color = [1.0, 1.0, 1.0], transparent = True, antialias = True, 
+    use_default_colors = True, custom_colors = [[0, 0.667, 0.667, 0, 0]], 
+    use_finish = "", custom_finish = "", 
+    display = False, render = True, open_png = True):
 
     """ 
     Generates a .pov and optionally render an image from a json file.
     device_dict, pov_name, and image_name are the only required 
     values.
-      * device_dict is the dictionary entry from the json file
-      * pov_name is the name for the generated .pov file
-      * image_name is the name for the image that will be rendered
+    * device_dict is the dictionary entry from the json file
+    * pov_name is the name for the generated .pov file
+    * image_name is the name for the image that will be rendered
 
     By default, the code will generate a .pov file, render an image
     and open it post-render with eog.

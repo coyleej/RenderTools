@@ -1,5 +1,6 @@
 import signac
 from rendering import write_pov
+from os import system
 
 # RECTANGLE
 #json_file = "DeviceFiles/Rectangles/device.index.json.gz"
@@ -36,6 +37,12 @@ image_name = "cyl_glass8.png"
 with signac.Collection.open(json_file, compresslevel=1) as d_index:
     device_dict = list(d_index.find(filter={"_id": device_id}))[0]
 
+print(device_dict)
+
+command = "cat {0}".format(json_file)
+print(command)
+system(command)
+
 height = 800
 num_UC = 8
 
@@ -65,13 +72,13 @@ custom_colors = [
 ##        [1.000, 0.271, 0.000]
         ]
 
-write_pov(device_dict, pov_name, image_name, \
-        height = height, width = height, \
-        num_UC_x = num_UC, num_UC_y = num_UC, \
-        camera_style = "perspective", \
-        camera_rotate = 60, ortho_angle = 30, \
-        add_edge_buffer = True, \
-        use_default_colors = False, custom_colors = custom_colors, \
-        use_finish = "glass", custom_finish = extra_finish, \
-        display = False, render = True, open_png = True)
+write_pov(device_dict, pov_name, image_name, 
+        height = height, width = height, 
+        num_UC_x = num_UC, num_UC_y = num_UC, 
+        camera_style = "perspective", 
+        camera_rotate = 60, ortho_angle = 30, 
+        add_edge_buffer = True, 
+        use_default_colors = False, custom_colors = custom_colors, 
+        use_finish = "glass", custom_finish = extra_finish, 
+        display = False, render = False, open_png = True)
 

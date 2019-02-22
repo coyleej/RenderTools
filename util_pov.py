@@ -234,8 +234,8 @@ def guess_camera(device_dims, camera_style="perspective", angle=0, center=[0, 0]
 
     return camera_position, camera_look_at, light_position
 
-def color_and_finish(dev_string, default_color_dict, material, use_default_colors, \
-        custom_color = [0, 0.6667, 0.667, 0, 0], use_finish = "dull", \
+def color_and_finish(dev_string, default_color_dict, material, use_default_colors, 
+        custom_color = [0, 0.6667, 0.667, 0, 0], use_finish = "dull", 
         custom_finish = ""):
     """ 
     Sets the color and finish of the object and appends this to the device string.
@@ -275,12 +275,6 @@ def color_and_finish(dev_string, default_color_dict, material, use_default_color
                          filter and transmit, respectively. F and T are 
                          optional and both default to 0.
     :type custom_color: list
-
-    :param filter_: Sets the filter value (default 0)
-    :type filter_: float
-
-    :param transmit: Sets the transmit value (default 0) 
-    :type transmit: float
 
     :param use_finish: Select the finish that you want. Current options are:
                        "material", "Si", "SiO2", "glass", "bright_metal", 
