@@ -3,13 +3,13 @@ from rendering import write_pov
 from os import system
 
 # RECTANGLE
-#json_file = "DeviceFiles/Rectangles/device.index.json.gz"
-#device_id = "318a5dce269fc505ef665148c36a7677"
+json_file = "DeviceFiles/Rectangles/device.index.json.gz"
+device_id = "318a5dce269fc505ef665148c36a7677"
 
 # CYLINDER
-json_file = "DeviceFiles/Cylinders/device.index.json.gz"
+#json_file = "DeviceFiles/Cylinders/device.index.json.gz"
 #device_id = "318a5dce269fc505ef665148c36a7677"
-device_id = "27e5abfcc1ac54f500b8c4dcdf2c64d3"  # device render for Eric
+#device_id = "27e5abfcc1ac54f500b8c4dcdf2c64d3"  # device render for Eric
 
 # ELLIPSE
 #json_file = "DeviceFiles/Ellipse/device.index.json.gz"
@@ -31,24 +31,17 @@ device_id = "27e5abfcc1ac54f500b8c4dcdf2c64d3"  # device render for Eric
 #device_id = "318a5dce269fc505ef665148c36a7677"
 
 ####################################################
-pov_name = "cyl_glass8.pov"
-image_name = "cyl_glass8.png"
 
-with signac.Collection.open(json_file, compresslevel=1) as d_index:
-    device_dict = list(d_index.find(filter={"_id": device_id}))[0]
-
-print(device_dict)
-
-command = "cat {0}".format(json_file)
-print(command)
-system(command)
+pov_name = "rect_glass8.pov"
+image_name = "rect_glass8.png"
 
 height = 800
 num_UC = 8
 
-#extra_finish = "finish \n\t\t\t{ob:c} \n\t\t\t".format(ob=123) \
-#        + "metallic 0.5 \n\t\t\t" \
-#        + "{cb:c}\n\t\t".format(cb=125)
+# Open device dictionary
+with signac.Collection.open(json_file, compresslevel=1) as d_index:
+    device_dict = list(d_index.find(filter={"_id": device_id}))[0]
+#print(device_dict)
 
 extra_finish = "finish \n\t\t\t{ob:c} \n\t\t\t".format(ob=123) \
         + "emission 0.2 \n\t\t\t" \
@@ -68,8 +61,6 @@ custom_colors = [
         [0.212, 0.211, 0.835],
         [0.000, 0.000, 1.000], 
         [1.000, 0.000, 0.000]
-##        [0.298, 0.687, 0.314]
-##        [1.000, 0.271, 0.000]
         ]
 
 write_pov(device_dict, pov_name, image_name, 
@@ -80,5 +71,5 @@ write_pov(device_dict, pov_name, image_name,
         add_edge_buffer = True, 
         use_default_colors = False, custom_colors = custom_colors, 
         use_finish = "glass", custom_finish = extra_finish, 
-        display = False, render = False, open_png = True)
-
+        display = False, render = True , num_threads = 3, 
+        open_png = True)

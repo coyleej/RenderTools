@@ -9,7 +9,8 @@ def write_pov(device_dict, pov_name, image_name,
     bg_color = [1.0, 1.0, 1.0], transparent = True, antialias = True, 
     use_default_colors = True, custom_colors = [[0, 0.667, 0.667, 0, 0]], 
     use_finish = "", custom_finish = "", 
-    display = False, render = True, open_png = True):
+    display = False, render = True, num_threads = 0, 
+    open_png = False):
 
     """ 
     Generates a .pov and optionally render an image from a json file.
@@ -144,8 +145,12 @@ def write_pov(device_dict, pov_name, image_name,
     :param render: Tells POV-Ray to render the image (default True)
     :type render: bool
 
+    :param num_threads: Tells POV-Ray how many threads to use when rendering,
+                        specifying 0 will use all available (default 0)
+    :type render: int
+
     :param open_png: Opens rendered image with eog if the rendering is
-                     successful (default True)
+                     successful (default False)
     :type open_png: bool
     """
 
@@ -473,6 +478,9 @@ def write_pov(device_dict, pov_name, image_name,
 
     if antialias:
         command += " +A"
+
+    if num_threads != 0:
+        command += " +WT{0}".format(num_threads)
 
     if open_png == True:
         command += " && eog {}".format(image_name)
