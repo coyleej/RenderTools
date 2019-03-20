@@ -8,7 +8,7 @@ output_dir = "Poster/"
 gif_name = "devices.gif"
 
 ##### Render settings #####
-height = 300
+height = 200
 # width = height #in function call
 
 # All have the same camera information
@@ -80,7 +80,7 @@ for i in range(len(device_list)):
             add_edge_buffer = False, 
             use_default_colors = False, custom_colors = [custom_colors[i]], 
             use_finish = "dull", custom_finish = extra_finish, 
-            display = False, render = True , num_threads = 3, 
+            display = False, render = True , num_threads = 4, 
             open_png = False)
 
 ##### Gif #####
