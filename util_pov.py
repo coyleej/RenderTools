@@ -129,12 +129,12 @@ def create_polygon(center, end, num_points, points, angle=0, for_silo=False):
     print("\ncreate_polygon is UNTESTED!\n")
     poly_string = "prism\n\t\t{ob:c}\n\t\t".format(ob=123) \
             + "linear_sweep \n\t\tlinear_spline \n\t\t" \
-            + "{0}, {1}, {2} \n\t\t".format(num_points, end[0], end[1])
+            + "{0}, {1}, {2} \n\t\t".format(end[0], end[1], num_points)
 
     for i in range(len(num_points)):
         poly_string += "<{0}, {1}>, ".format(points[i][0], points[i][1])
 
-    poly_string += "<{0}, {1}> ".format(points[0][0], points[0][1])
+    poly_string += "<{0}, {1}> \n\t\t".format(points[0][0], points[0][1])
 
     if center != [0.0, 0.0]:
         poly_string += "translate <{0}, {1}, 0> \n\t\t".format(center[0], center[1])

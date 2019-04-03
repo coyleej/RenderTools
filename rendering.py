@@ -363,14 +363,33 @@ def write_pov(device_dict, pov_name, image_name,
     # Substrate layer
     material = "subst"
     thickness_sub = max(1, deep_access(device_dict, ['statepoint', 'sub_layer', 'thickness']))
-    background_sub = deep_access(device_dict, ['statepoint', 'sub_layer', 'background'])
-    halfwidth = [(0.5 * lattice_vecs[0][0]), (0.5 * lattice_vecs[1][1])]
+    halfwidth = [(0.5 * (lattice_vecs[0][0] + lattice_vecs[1][0])), (0.5 * (lattice_vecs[0][1] + lattice_vecs[1][1]))]
 
-    end = [(-1.0 * device_dims[2]), (-1.0 * device_dims[2] - thickness_sub)]
+    end = [(-0.5 * thickness_sub), (0.5 * thickness_sub)]
 
-    device += "box\n\t\t{ob:c}\n\t\t".format(ob=123) \
-            + "<{0}, {1}, {2}>\n\t\t".format((-1.0 * halfwidth[0]), (-1.0 * halfwidth[1]), end[0]) \
-            + "<{0}, {1}, {2}>\n\t\t".format(halfwidth[0], halfwidth[1], end[1]) 
+    # Defining substrate vertices from lattice_vecs
+    points = [ [0, 0], 
+            [lattice_vecs[0][0], lattice_vecs[0][1]],
+            [(lattice_vecs[0][0] + lattice_vecs[1][0]), (lattice_vecs[0][1] + lattice_vecs[1][1])],
+            [lattice_vecs[1][0], lattice_vecs[1][1]] ]
+
+    # Write substrate layer
+    device += "prism\n\t\t{ob:c}\n\t\t".format(ob=123) \
+            + "linear_sweep \n\t\tlinear_spline \n\t\t" \
+            + "{0}, {1}, {2} \n\t\t".format(end[0], end[1], 5)
+
+    for i in range(len(points)):
+        points[i][0] -= (center[0] + halfwidth[0])
+        points[i][1] -= (center[1] + halfwidth[1])
+        device += "<{0}, {1}>, ".format(points[i][0], points[i][1])
+    device += "<{0}, {1}> \n\t\t".format(points[0][0], points[0][1])
+
+
+
+    device += "rotate <90, 0, 0> \n\t\t"
+    device += "translate <{0}, {1}, {2}> \n\t\t".format((-1.0 * center[0]), (-1.0 * center[1]), (end[0] - device_dims[2]))
+
+
 
     device = color_and_finish(device, default_color_dict, material, \
             use_default_colors = True, use_finish = "dull")

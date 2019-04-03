@@ -1,14 +1,15 @@
 import signac
 from rendering import write_pov
+#from rendering_ortho_only import write_pov
 from os import system
 
 # RECTANGLE
-json_file = "DeviceFiles/Rectangles/device.index.json.gz"
-device_id = "318a5dce269fc505ef665148c36a7677"
+#json_file = "DeviceFiles/Rectangles/device.index.json.gz"
+#device_id = "318a5dce269fc505ef665148c36a7677"
 
 # CYLINDER
-#json_file = "DeviceFiles/Cylinders/device.index.json.gz"
-#device_id = "318a5dce269fc505ef665148c36a7677"
+json_file = "DeviceFiles/Cylinders/device.index.json.gz"
+device_id = "318a5dce269fc505ef665148c36a7677"
 #device_id = "27e5abfcc1ac54f500b8c4dcdf2c64d3"  # device render for Eric
 
 # ELLIPSE
@@ -32,11 +33,13 @@ device_id = "318a5dce269fc505ef665148c36a7677"
 
 ####################################################
 
-pov_name = "rect_glass8.pov"
-image_name = "rect_glass8.png"
+pov_name = "test1.pov"
+image_name = "test1.png"
+#pov_name = "test1_ortho.pov"
+#image_name = "test1_ortho.png"
 
 height = 800
-num_UC = 8
+num_UC = 1
 
 # Open device dictionary
 with signac.Collection.open(json_file, compresslevel=1) as d_index:
@@ -68,8 +71,8 @@ write_pov(device_dict, pov_name, image_name,
         num_UC_x = num_UC, num_UC_y = num_UC, 
         camera_style = "perspective", 
         camera_rotate = 60, ortho_angle = 30, 
-        add_edge_buffer = True, 
+        add_edge_buffer = False, 
         use_default_colors = False, custom_colors = custom_colors, 
-        use_finish = "glass", custom_finish = extra_finish, 
+        use_finish = "dull", custom_finish = extra_finish, 
         display = False, render = True , num_threads = 3, 
         open_png = True)
