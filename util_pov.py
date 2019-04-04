@@ -98,7 +98,7 @@ def create_rectangle(center, end, halfwidths, angle=0, for_silo=False):
 
     return rect_string
 
-def create_polygon(center, end, num_points, points, angle=0, for_silo=False):
+def create_polygon(center, end, halfwidths, num_points, points, device_dims, angle=0, for_silo=False):
     """ 
     Creates povray instructions for a polygon/prism
 
@@ -127,23 +127,28 @@ def create_polygon(center, end, num_points, points, angle=0, for_silo=False):
     """
 
     print("\ncreate_polygon is UNTESTED!\n")
+    print("The substrate portion of write_POV contains a working prism implementation\n")
     poly_string = "prism\n\t\t{ob:c}\n\t\t".format(ob=123) \
             + "linear_sweep \n\t\tlinear_spline \n\t\t" \
             + "{0}, {1}, {2} \n\t\t".format(end[0], end[1], num_points)
 
+    # Must spawn prism at origin, then rotate and translate into position
+    # Thanks, povray's weird coordinate system
     for i in range(len(num_points)):
+        points[i][0] -= (center[0] + halfwidth[0])
+        points[i][1] -= (center[1] + halfwidth[1])
         poly_string += "<{0}, {1}>, ".format(points[i][0], points[i][1])
-
     poly_string += "<{0}, {1}> \n\t\t".format(points[0][0], points[0][1])
 
-    if center != [0.0, 0.0]:
-        poly_string += "translate <{0}, {1}, 0> \n\t\t".format(center[0], center[1])
+    device += "rotate <90, 0, 0> \n\t\t"
+    device += "translate <{0}, {1}, {2}> \n\t\t".format((-1.0 * center[0]), (-1.0 * center[1]), (end[0] - device_dims[2]))
+
     if angle != 0:      # in degrees
         poly_string += "rotate <0, 0, {0}> \n\t\t".format(angle)
     if for_silo:
         poly_string += "{cb:c}\n\t\t".format(cb=125)
 
-    return
+    return poly_string
 
 def update_device_dims(device_dims, new_x, new_y, new_z):
     """
