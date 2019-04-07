@@ -8,8 +8,8 @@ from os import system
 #device_id = "318a5dce269fc505ef665148c36a7677"
 
 # CYLINDER
-json_file = "DeviceFiles/Cylinders/device.index.json.gz"
-device_id = "318a5dce269fc505ef665148c36a7677"
+#json_file = "DeviceFiles/Cylinders/device.index.json.gz"
+#device_id = "318a5dce269fc505ef665148c36a7677"
 #device_id = "27e5abfcc1ac54f500b8c4dcdf2c64d3"  # device render for Eric
 
 # ELLIPSE
@@ -17,8 +17,8 @@ device_id = "318a5dce269fc505ef665148c36a7677"
 #device_id = "318a5dce269fc505ef665148c36a7677"
 
 # SILO
-#json_file = "DeviceFiles/Silos/device.index.json.gz"
-#device_id = "698bd2fc89cbb7439c2268a564569811"
+json_file = "DeviceFiles/Silos/device.index.json.gz"
+device_id = "698bd2fc89cbb7439c2268a564569811"
 #device_id = "ba263aa69972dfe6815121e83a28c923"      # device render for Eric
 
 #MOTHEYE
@@ -39,7 +39,7 @@ image_name = "test1.png"
 #image_name = "test1_ortho.png"
 
 height = 800
-num_UC = 1
+num_UC = 3
 
 # Open device dictionary
 with signac.Collection.open(json_file, compresslevel=1) as d_index:
@@ -66,12 +66,33 @@ custom_colors = [
         [1.000, 0.000, 0.000]
         ]
 
+# Starts at bottom coating layer and builds up (micrometers)
+# [material, thickness]
+extra_coatings = [ 
+        ["coating1", 0.01824],
+        ["coating2", 0.04277],
+        ["coating1", 0.02885],
+        ["coating2", 0.04662],
+        ["coating1", 0.02885],
+        ["coating2", 0.04662],
+        ["coating1", 0.02885],
+        ["coating2", 0.05224],
+        ["coating1", 0.01557],
+        ["coating3", 0.130]]
+
+bg_coating_color_dict = { 
+        "coating1":[1, 0, 0, 0, 0.65],
+        "coating2":[0, 1, 0, 0, 0.65],
+        "coating3":[0, 0, 1, 0, 0.65]}
+
 write_pov(device_dict, pov_name, image_name, 
         height = height, width = height, 
         num_UC_x = num_UC, num_UC_y = num_UC, 
         camera_style = "perspective", 
         camera_rotate = 60, ortho_angle = 30, 
         add_edge_buffer = False, 
+        coating_layers = extra_coatings, 
+        coating_color_dict = bg_coating_color_dict,
         use_default_colors = False, custom_colors = custom_colors, 
         use_finish = "dull", custom_finish = extra_finish, 
         display = False, render = True , num_threads = 3, 

@@ -19,8 +19,8 @@ def create_cylinder(center, end, radius, for_silo=False):
 
     """
     cyl_string = "cylinder \n\t\t{ob:c}\n\t\t ".format(ob=123) \
-            + "<{0}, {1}, {2}>, \n\t\t".format(center[0], center[1], end[0]) \
-            + "<{0}, {1}, {2}>, \n\t\t".format(center[0], center[1], end[1]) 
+            + "<{0}, {1}, {2:.5f}>, \n\t\t".format(center[0], center[1], end[0]) \
+            + "<{0}, {1}, {2:.5f}>, \n\t\t".format(center[0], center[1], end[1]) 
 
     if for_silo:
         cyl_string += "{0} {cb:c}\n\t\t".format(radius, cb=125)
@@ -52,8 +52,8 @@ def create_ellipse(center, end, halfwidths, angle=0, for_silo=False):
     :rtype: string
     """
     ellipse_string = "cylinder \n\t\t{ob:c}\n\t\t ".format(ob=123) \
-            + "<{0}, {1}, {2}>, \n\t\t".format(center[0], center[1], end[0]) \
-            + "<{0}, {1}, {2}>, 1 \n\t\t".format(center[0], center[1], end[1]) \
+            + "<{0}, {1}, {2:.5f}>, \n\t\t".format(center[0], center[1], end[0]) \
+            + "<{0}, {1}, {2:.5f}>, 1 \n\t\t".format(center[0], center[1], end[1]) \
             + "scale <{0}, {1}, 1> \n\t\t".format(halfwidths[0], halfwidths[1])
 
     if angle != 0:      # in degrees
@@ -87,9 +87,9 @@ def create_rectangle(center, end, halfwidths, angle=0, for_silo=False):
     """
     rect_string = "box\n\t\t{ob:c}\n\t\t".format(ob=123) \
             + "<{0}, ".format(center[0] - halfwidths[0]) \
-            + "{0}, {1}>\n\t\t".format((center[1] - halfwidths[1]), end[0]) \
+            + "{0}, {1:.5f}>\n\t\t".format((center[1] - halfwidths[1]), end[0]) \
             + "<{0} ".format(center[0] + halfwidths[0]) \
-            + "{0}, {1}>\n\t\t".format((center[1] + halfwidths[1]), end[1])
+            + "{0}, {1:.5f}>\n\t\t".format((center[1] + halfwidths[1]), end[1])
 
     if angle != 0:      # in degrees
         rect_string += "rotate <0, 0, {0}> \n\t\t".format(angle)
@@ -98,7 +98,7 @@ def create_rectangle(center, end, halfwidths, angle=0, for_silo=False):
 
     return rect_string
 
-def create_polygon(center, end, halfwidths, num_points, points, device_dims, angle=0, for_silo=False):
+def create_polygon(center, end, halfwidths, points, device_dims, angle=0, for_silo=False):
     """ 
     Creates povray instructions for a polygon/prism
 
@@ -128,9 +128,14 @@ def create_polygon(center, end, halfwidths, num_points, points, device_dims, ang
 
     print("\ncreate_polygon is UNTESTED!\n")
     print("The substrate portion of write_POV contains a working prism implementation\n")
+
+    # Povray requires that you close the shape
+    # The first and last point must be the same
+    num_points = len(points) + 1
+
     poly_string = "prism\n\t\t{ob:c}\n\t\t".format(ob=123) \
             + "linear_sweep \n\t\tlinear_spline \n\t\t" \
-            + "{0}, {1}, {2} \n\t\t".format(end[0], end[1], num_points)
+            + "{0:.5f}, {1:.5f}, {2} \n\t\t".format(end[0], end[1], num_points)
 
     # Must spawn prism at origin, then rotate and translate into position
     # Thanks, povray's weird coordinate system
@@ -141,7 +146,9 @@ def create_polygon(center, end, halfwidths, num_points, points, device_dims, ang
     poly_string += "<{0}, {1}> \n\t\t".format(points[0][0], points[0][1])
 
     device += "rotate <90, 0, 0> \n\t\t"
-    device += "translate <{0}, {1}, {2}> \n\t\t".format((-1.0 * center[0]), (-1.0 * center[1]), (end[0] - device_dims[2]))
+#    device += "translate <{0}, {1}, {2}> \n\t\t".format((-1.0 * center[0]), (-1.0 * center[1]), (end[0] - device_dims[2]))
+    device += "translate <{0}, {1}, {2}> \n\t\t".format( \
+            (-1.0 * center[0]), (-1.0 * center[1]), (end[0] - device_dims[2]))
 
     if angle != 0:      # in degrees
         poly_string += "rotate <0, 0, {0}> \n\t\t".format(angle)
@@ -149,6 +156,63 @@ def create_polygon(center, end, halfwidths, num_points, points, device_dims, ang
         poly_string += "{cb:c}\n\t\t".format(cb=125)
 
     return poly_string
+
+def add_slab(lattice_vecs, thickness, device_dims, layer_type="substrate"):
+    """
+    Adds a slab using the lattice vectors as the dimensions
+    Use this for the substrate and any coating layers
+
+    :param center: Point on the x,y-plane where the shape is centered
+    :type center: list
+
+    :return: POV-Ray code describing the slab and the slab halfwidths
+    :rtype: tuple
+    """
+
+    halfwidth = [(0.5 * (lattice_vecs[0][0] + lattice_vecs[1][0])),
+            (0.5 * (lattice_vecs[0][1] + lattice_vecs[1][1]))]
+
+    # Curse povray's weird coordinate system, only the prism is affected by it 
+    # Must spawn at center, then rotate and translate later
+    end = [(-0.5 * thickness), (0.5 * thickness)]
+
+    # Defining slab vertices from lattice_vecs
+    # The shape is closed later (Povray requires that the first & last point match)
+    points = [ [0, 0],
+            [lattice_vecs[0][0], lattice_vecs[0][1]],
+            [(lattice_vecs[0][0] + lattice_vecs[1][0]), (lattice_vecs[0][1] + lattice_vecs[1][1])],
+            [lattice_vecs[1][0], lattice_vecs[1][1]] ]
+
+    # Write slab layer, adding teensy extra height to prevent weird artifacts
+    slab = "prism\n\t\t{ob:c}\n\t\t".format(ob=123) \
+            + "linear_sweep \n\t\tlinear_spline \n\t\t" \
+            + "{0}, {1}, {2} \n\t\t".format(end[0] * 1.000001, end[1] * 1.000001, (len(points) + 1))
+
+    for i in range(len(points)):
+        points[i][0] -= halfwidth[0]
+        points[i][1] -= halfwidth[1]
+        slab += "<{0}, {1}>, ".format(points[i][0], points[i][1])
+    slab += "<{0}, {1}> \n\t\t".format(points[0][0], points[0][1])
+
+    # Determine translation vector
+    if layer_type == "coating":
+        x_translate = device_dims[0]
+        y_translate = device_dims[1]
+        z_translate = end[1] + device_dims[2]
+    elif layer_type == "background":
+        x_translate, y_translate = 0, 0
+        z_translate = end[0] - device_dims[2]
+    else:           # "substrate"
+        x_translate = device_dims[0]
+        y_translate = device_dims[1]
+        z_translate = end[0] - device_dims[2]
+
+    # Move slab to final location
+    slab += "rotate <90, 0, 0> \n\t\t"
+    slab += "translate <{0}, {1}, {2}> \n\t\t".format( \
+            x_translate, y_translate, z_translate)
+
+    return slab, halfwidth
 
 def update_device_dims(device_dims, new_x, new_y, new_z):
     """
@@ -177,7 +241,7 @@ def update_device_dims(device_dims, new_x, new_y, new_z):
     device_dims[2] += new_z
     return device_dims
 
-def guess_camera(device_dims, camera_style="perspective", angle=0, center=[0, 0]):
+def guess_camera(device_dims, coating_dims=[0,0,0], camera_style="perspective", angle=0, center=[0, 0]):
     """ 
     Guesses the camera location if you have no idea what a good camera 
     position is. Can look at the device from the side (angle = 0) or at an 
@@ -186,6 +250,9 @@ def guess_camera(device_dims, camera_style="perspective", angle=0, center=[0, 0]
     .pov file is always encouraged.
     
     :param device_dims: Dimensions of the unit cell
+    :type device_dims: list
+
+    :param coating_dims: Dimensions of the coating layer(s)
     :type device_dims: list
 
     :param camera_style: The desired camera style, currently accepts perspective and orthographic
@@ -221,12 +288,15 @@ def guess_camera(device_dims, camera_style="perspective", angle=0, center=[0, 0]
         print("WARNING: Camera parameters have not been optimized for this style!")
 
     # Offset for x,y-dimensions
-    camera_offset = x_offset * max(device_dims) 
+    #camera_offset = x_offset * max(device_dims) 
+    camera_offset = x_offset * (max(device_dims) + 0.8 * max(coating_dims))
 
     camera_position[0] = (camera_offset + device_dims[0]) * cos(angle)
     camera_position[1] = (camera_offset + device_dims[0]) * sin(angle)
-    camera_position[2] = z_scale * (device_dims[2])
-    camera_look_at = [center[0], center[1], (-0.66 * device_dims[2])]
+    #camera_position[2] = z_scale * (device_dims[2])
+    camera_position[2] = z_scale * (device_dims[2] + 0.5 * coating_dims[2])
+    #camera_look_at = [center[0], center[1], (-0.66 * device_dims[2])]
+    camera_look_at = [center[0], center[1], (-0.66 * device_dims[2] + 0.50 * coating_dims[2])]
 
     light_offset = camera_offset * 1.25 
     light_position[0] = (device_dims[0] + light_offset) * cos(angle - 12 * deg_to_rads)
@@ -295,6 +365,7 @@ def color_and_finish(dev_string, default_color_dict, material, use_default_color
         use_finish = material
 
     if use_finish == "Si" or use_finish == "silicon":
+        filter_ = 0
         extra_finish = "finish \n\t\t\t{ob:c} \n\t\t\t".format(ob=123) \
                 + "diffuse 0.2 \n\t\t\t" \
                 + "brilliance 5 \n\t\t\t" \
@@ -317,6 +388,13 @@ def color_and_finish(dev_string, default_color_dict, material, use_default_color
                 + "{cb:c}\n\t\t".format(cb=125) \
                 + "interior {ob:c} ior 1.45 {cb:c}\n\t\t".format(ob=123, cb=125)
 
+    elif use_finish == "translucent":
+        filter_ = 0.65
+        extra_finish = "finish \n\t\t\t{ob:c} \n\t\t\t".format(ob=123) \
+                + "emission 0.25 \n\t\t\t" \
+                + "diffuse 0 \n\t\t\t" \
+                + "{cb:c}\n\t\t".format(cb=125) \
+
     elif use_finish == "glass":
         filter_ = 0.95
         extra_finish = "finish \n\t\t\t{ob:c} \n\t\t\t".format(ob=123) \
@@ -328,6 +406,7 @@ def color_and_finish(dev_string, default_color_dict, material, use_default_color
                 + "interior {ob:c} ior 1.5 {cb:c}\n\t\t".format(ob=123, cb=125)
 
     elif use_finish == "dull_metal":
+        filter_ = 0
         extra_finish = "finish \n\t\t\t{ob:c} \n\t\t\t".format(ob=123) \
                 + "emission 0.1 \n\t\t\t" \
                 + "diffuse 0.1 \n\t\t\t" \
@@ -338,6 +417,7 @@ def color_and_finish(dev_string, default_color_dict, material, use_default_color
                 + "{cb:c}\n\t\t".format(cb=125)
 
     elif use_finish == "bright_metal":
+        filter_ = 0
         extra_finish = "finish \n\t\t\t{ob:c} \n\t\t\t".format(ob=123) \
                 + "emission 0.2 \n\t\t\t" \
                 + "diffuse 0.3 \n\t\t\t" \
@@ -359,6 +439,7 @@ def color_and_finish(dev_string, default_color_dict, material, use_default_color
                 + "interior {ob:c} ior 1.5 {cb:c}\n\t\t".format(ob=123, cb=125)
 
     elif use_finish == "billiard":
+        filter_ = 0
         extra_finish = "finish \n\t\t\t{ob:c} \n\t\t\t".format(ob=123) \
                 + "ambient 0.3 \n\t\t\t" \
                 + "diffuse 0.8 \n\t\t\t" \
@@ -382,6 +463,10 @@ def color_and_finish(dev_string, default_color_dict, material, use_default_color
     if len(color) == 3:
         color.append(0)     # filter
         color.append(0)     # transmit
+
+    if use_finish in ["SiO2", "translucent", "glass", "irid"]: # and use_default_colors == True:
+        print("\nWARNING: color_and_finish is overriding your filter value!!\n")
+        color[4] = filter_
 
     dev_string += "pigment {ob:c} ".format(ob=123) \
             + "color rgbft " \

@@ -6,6 +6,8 @@ def write_pov(device_dict, pov_name, image_name,
     camera_loc = [], look_at = [0,0,0], light_loc = [], 
     up_dir = [0, 0, 1.33], right_dir = [0, 1, 0], sky = [0, 0, 1.33], 
     shadowless = False, add_edge_buffer = False, 
+    coating_layers = [], 
+    coating_color_dict = {}, 
     bg_color = [1.0, 1.0, 1.0], transparent = True, antialias = True, 
     use_default_colors = True, custom_colors = [[0, 0.667, 0.667, 0, 0]], 
     use_finish = "", custom_finish = "", 
@@ -110,6 +112,16 @@ def write_pov(device_dict, pov_name, image_name,
                             setting to True (default False)
     :type add_edge_buffer: bool
 
+
+    :param coating_layers: List containing material and thickness of each
+                           layer, starting with the bottom layer and
+                           working up
+    :type coating_layers: list
+
+    :param bg_coating_color_dict: Dictionary containing color definitions
+                                  for all coating layers present
+    :type bg_coating_color_dict: dict
+
     :param bg_color: Sets the background color (default [1.0, 1.0, 1.0])
     :type bg_color: list
 
@@ -159,30 +171,34 @@ def write_pov(device_dict, pov_name, image_name,
     from util import deep_access
     from util_pov import update_device_dims, guess_camera, color_and_finish
     from util_pov import create_cylinder, create_ellipse, create_rectangle, create_polygon
+    from util_pov import add_slab
 
     fID = open(pov_name,'w')
 
     default_color_dict = {
-            "subst": [0.15, 0.15, 0.15], 
-            "Si":[0.2, 0.2, 0.2], 
-            "SiO2":[0.99, 0.99, 0.96]
+            "subst": [0.15, 0.15, 0.15, 0, 0], 
+            "Si":[0.2, 0.2, 0.2, 0, 0], 
+            "SiO2":[0.99, 0.99, 0.96, 0, 0.1]
             }
 
     number_of_layers = deep_access(device_dict, ['statepoint', 'num_layers'])
 
     # Set up custom color dictionary
-    orig_custom_colors = deepcopy(custom_colors)
-
     # Assumes no more than THREE shapes per layer
+    orig_custom_colors = deepcopy(custom_colors)
     if not use_default_colors:
         while len(custom_colors) < 3 * number_of_layers:
             for i in range(len(orig_custom_colors)):
                 custom_colors.append(orig_custom_colors[i])
 
-    c = 0       # Counter for incrementing through colors
-
-    device_dims = [0, 0, 0] # Tracks dimensions of the unit cell
-    device = ""             # Will store the device
+    # Counter for incrementing through colors
+    c = 0
+    # Tracks dimensions of the unit cell
+    device_dims = [0, 0, 0] 
+    # Track coating layer thickness
+    coating_dims = [0, 0, 0]
+    # Store device
+    device = ""
 
     # Lattice vectors
     lattice_dict = deep_access(device_dict, ['statepoint', 'lattice_vecs'])
@@ -201,15 +217,39 @@ def write_pov(device_dict, pov_name, image_name,
     # Device layers
     device += "#declare UnitCell = "
     device += "merge\n\t{ob:c}\n\t".format(ob=123)
+    ##device += "union\n\t{ob:c}\n\t".format(ob=123)
 
-    #for i in range(deep_access(device_dict, ['statepoint', 'num_layers'])):
     for i in range(number_of_layers):
 
         if deep_access(device_dict, ['statepoint', 'dev_layers', str(i)]).get('shapes') is not None:
             shapes = deep_access(device_dict, ['statepoint', 'dev_layers', str(i), 'shapes'])
+            background = deep_access(device_dict, ['statepoint', 'dev_layers', str(i), 'background'])
             thickness = deep_access(device_dict, ['statepoint', 'dev_layers', str(i), 'thickness'])
-            end = [(-1.0 * device_dims[2]), (-1.0 * device_dims[2] - thickness)]
+            end = [float(-1.0 * device_dims[2]), float(-1.0 * device_dims[2] - thickness)]
             # end = [top, bottom]
+
+            device += "union\n\t{ob:c}\n\t".format(ob=123)
+
+            # Check for background material
+            bg_slab = ""
+            if background != "Vacuum":
+                # Forcing elimination of internal boundaries
+                # (They appear if you use lattice_vecs instead of temp_vecs)
+                temp_vecs = deepcopy(lattice_vecs)
+                for k in range(2):
+                    for l in range(2):
+                        temp_vecs[k][l] += 0.0002
+
+                device += "// Layer background\n\t"
+                bg_slab, halfwidth = add_slab(temp_vecs, thickness, device_dims, 
+                        layer_type="background")
+                bg_slab = color_and_finish(bg_slab, default_color_dict, background, 
+                        use_default_colors = False, 
+                        custom_color=coating_color_dict[background],
+                        use_finish = "translucent")
+                        #custom_color=[1,0,0,0,0.65], 
+
+                device += bg_slab
 
             # Determine layer types
             layer_type = []
@@ -234,6 +274,7 @@ def write_pov(device_dict, pov_name, image_name,
                     center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
                     radius = deep_access(shapes, [str(k), 'shape_vars', 'radius'])
 
+                    device += "// Circular pillar\n\t"
                     device += create_cylinder(center, end, radius)
 
                     device = color_and_finish(device, default_color_dict, material, \
@@ -248,14 +289,17 @@ def write_pov(device_dict, pov_name, image_name,
                 elif layer_type[k] == "silo":
                     material = deep_access(shapes, [str(k), 'material'])
 
+                    device += "// Silo\n\t"
                     device += "difference \n\t\t{ob:c}\n\t\t".format(ob=123)
 
                     # First shape
+                    # Only need feature variable for first shape, as it's the biggest
                     if deep_access(shapes, [str(k), 'shape']) == "circle":
                         center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
                         radius = deep_access(shapes, [str(k), 'shape_vars', 'radius'])
                         halfwidths = [radius, radius]           # to make things work
                         device += create_cylinder(center, end, radius, for_silo=True)
+
                     elif deep_access(shapes, [str(k), 'shape']) == "ellipse":
                         material = deep_access(shapes, [str(k), 'material'])
                         center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
@@ -263,6 +307,7 @@ def write_pov(device_dict, pov_name, image_name,
                         angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
                         device += create_ellipse(center, end, halfwidths, angle, for_silo=True)
                         print("WARNING: this function has not been tested in silos!!")
+
                     elif deep_access(shapes, [str(k), 'shape']) == "rectangle":
                         material = deep_access(shapes, [str(k), 'material'])
                         center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
@@ -270,8 +315,10 @@ def write_pov(device_dict, pov_name, image_name,
                         angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
                         device += create_rectangle(center, end, halfwidths, angle, for_silo=True)
                         print("WARNING: this function has not been tested in silos!!")
+
                     elif deep_access(shapes, [str(k), 'shape']) == "polygon":
                         print("WARNING: create_polygon function has not been tested!!")
+
                     else:
                         print("ERROR: This shape is not supported!!")
 
@@ -320,6 +367,7 @@ def write_pov(device_dict, pov_name, image_name,
                     halfwidths = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
                     angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
 
+                    device += "// Ellipse\n\t"
                     device += create_ellipse(center, end, halfwidths, angle)
 
                     device = color_and_finish(device, default_color_dict, material, \
@@ -337,6 +385,7 @@ def write_pov(device_dict, pov_name, image_name,
                     halfwidths = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
                     angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
 
+                    device += "// Rectangle\n\t"
                     device += create_rectangle(center, end, halfwidths, angle)
 
                     device = color_and_finish(device, default_color_dict, material, \
@@ -355,62 +404,28 @@ def write_pov(device_dict, pov_name, image_name,
                     center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
                     angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
 
+                    device += "// Polygon\n\t"
                     #points = 
-
-                    #halfwidths = must determine from points
+                    #halfwidths = 
 
 
                 elif layer_type[k] == "Vacuum":
-                    # Python is too smart; it won't let me intentionally skip with k += 1
                     k = k
 
                 else:
                     print("\nWARNING: Invalid or unsupported layer specified.\n")
 
+            # End of device layer (update thickness and close union
             device_dims = update_device_dims(device_dims, 0, 0, thickness)
+            device += "{cb:c}\n\t".format(cb=125)
 
-    # Substrate layer
-    material = "subst"
-    thickness_sub = max(1, deep_access(device_dict, ['statepoint', 'sub_layer', 'thickness']))
-    halfwidth = [(0.5 * (lattice_vecs[0][0] + lattice_vecs[1][0])), 
-            (0.5 * (lattice_vecs[0][1] + lattice_vecs[1][1]))]
-
-    end = [(-0.5 * thickness_sub), (0.5 * thickness_sub)]
-
-    # Defining substrate vertices from lattice_vecs
-    points = [ [0, 0], 
-            [lattice_vecs[0][0], lattice_vecs[0][1]],
-            [(lattice_vecs[0][0] + lattice_vecs[1][0]), (lattice_vecs[0][1] + lattice_vecs[1][1])],
-            [lattice_vecs[1][0], lattice_vecs[1][1]] ]
-
-    # Write substrate layer
-    device += "prism\n\t\t{ob:c}\n\t\t".format(ob=123) \
-            + "linear_sweep \n\t\tlinear_spline \n\t\t" \
-            + "{0}, {1}, {2} \n\t\t".format(end[0], end[1], 5)
-
-    # Curse povray's weird coordinate system, only the prism seems affected by it 
-    # Must spawn at center, then rotate and translate later
-    for i in range(len(points)):
-        points[i][0] -= (center[0] + halfwidth[0])
-        points[i][1] -= (center[1] + halfwidth[1])
-        device += "<{0}, {1}>, ".format(points[i][0], points[i][1])
-    device += "<{0}, {1}> \n\t\t".format(points[0][0], points[0][1])
-
-    device += "rotate <90, 0, 0> \n\t\t"
-    device += "translate <{0}, {1}, {2}> \n\t\t".format( \
-            (-1.0 * center[0]), (-1.0 * center[1]), (end[0] - device_dims[2]))
-
-    device = color_and_finish(device, default_color_dict, material, \
-            use_default_colors = True, use_finish = "dull")
-
-    device_dims = update_device_dims(device_dims, halfwidth[0], halfwidth[1], thickness_sub)
-
+    # End unit cell merge
     device += "{cb:c}\n\n".format(cb=125)
 
     # Replicate unit cell
+    # Shift translation so that the original device is roughly in the center
     device += "merge\n\t{ob:c} \n\t".format(ob=123)
 
-    # Shift translation so that the original device is roughly in the center
     adj_x = int(0.5 * (num_UC_x - (1 + (num_UC_x - 1) % 2)))
     adj_y = int(0.5 * (num_UC_y - (1 + (num_UC_y - 1) % 2)))
     # Explanation: 
@@ -423,8 +438,6 @@ def write_pov(device_dict, pov_name, image_name,
             device += "object {ob:c} UnitCell translate <{0}, {1}, {2}> {cb:c}\n\t".format( \
                     ((i - adj_x) * lattice_vecs[0][0]), ((j - adj_y) * lattice_vecs[1][1]), 0, \
                     ob=123, cb=125)
-
-    device += "{cb:c}\n\n".format(cb=125)
 
     # Add buffer around the edge to minimize reflection washout
     if add_edge_buffer:
@@ -441,6 +454,65 @@ def write_pov(device_dict, pov_name, image_name,
 
         device = color_and_finish(device, default_color_dict, material, \
                 use_default_colors = True, use_finish = "dull")
+
+    # End replicate merge
+    device += "{cb:c}\n\n".format(cb=125)
+
+    # Setting up to add substrate and coating
+    # temp_vecs are the full dimensions of the material
+    temp_vecs = deepcopy(lattice_vecs)
+    for j in range(2):
+        temp_vecs[j][0] *= num_UC_x
+        temp_vecs[j][1] *= num_UC_y
+
+    # Slabs must remain centered at origin if num_UC_* is odd
+    # Must shift slab by one unit cell if even
+    if num_UC_x % 2 == 0:
+        for k in range(2):
+            coating_dims[0] += 0.5 * lattice_vecs[k][0]
+    if num_UC_y % 2 == 0:
+        for k in range(2):
+            coating_dims[1] += 0.5 * lattice_vecs[k][1]
+
+    substrate_dims = [coating_dims[0], coating_dims[1], device_dims[2]]
+    coating_dims = update_device_dims(coating_dims, 
+            coating_dims[0], coating_dims[1], 0)
+
+    # Substrate layer
+    device += "// Substrate\n\t"
+    material = "subst"
+    thickness_sub = max(1, deep_access(device_dict, ['statepoint', 'sub_layer', 'thickness']))
+
+    substrate, halfwidth = add_slab(temp_vecs, thickness_sub, substrate_dims, layer_type="substrate")
+    device += substrate
+
+    device = color_and_finish(device, default_color_dict, material, \
+            use_default_colors = True, use_finish = "dull")
+
+    halfwidth = [(0.5 * (lattice_vecs[0][0] + lattice_vecs[1][0])), 
+            (0.5 * (lattice_vecs[0][1] + lattice_vecs[1][1]))]
+
+    device_dims = update_device_dims(device_dims, 0, 0, thickness_sub)
+
+    # Add extra coatings on top of device
+    # Merge coating layers
+    device += "union\n\t{ob:c} \n\t".format(ob=123)
+
+    if coating_layers != []:
+        for j in range(len(coating_layers)):
+            device += "// Coating layer {0}\n\t".format(j + 1)
+            coating, halfwidth = add_slab(temp_vecs, coating_layers[j][1], \
+                    coating_dims, layer_type="coating")
+            coating = color_and_finish(coating, default_color_dict, \
+                    background, use_default_colors = False, \
+                    custom_color=coating_color_dict[coating_layers[j][0]], \
+                    use_finish = "translucent")
+            device += coating
+
+            coating_dims = update_device_dims(coating_dims, 0, 0, coating_layers[j][1])
+
+    # End coating merge
+    device += "{cb:c}\n\n".format(cb=125)
 
     ## HEADER AND CAMERA INFO
 
@@ -460,7 +532,8 @@ def write_pov(device_dict, pov_name, image_name,
 
     if camera_loc == [] or look_at == [] or light_loc == []:
         camera_loc, look_at, light_loc = \
-                guess_camera(device_dims, camera_style, angle = camera_rotate, center=[0, 0])
+                guess_camera(device_dims, coating_dims=coating_dims, \
+                camera_style=camera_style, angle = camera_rotate, center=[0, 0])
 
     header = "#version 3.7;\n" 
     header += "global_settings {ob:c} assumed_gamma 1.0 {cb:c}\n\n".format(ob=123, cb=125) 
