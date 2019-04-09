@@ -8,22 +8,24 @@ from os import system
 #device_id = "318a5dce269fc505ef665148c36a7677"
 
 # CYLINDER
-#json_file = "DeviceFiles/Cylinders/device.index.json.gz"
+json_file = "DeviceFiles/Cylinders/device.index.json.gz"
 #device_id = "318a5dce269fc505ef665148c36a7677"
-#device_id = "27e5abfcc1ac54f500b8c4dcdf2c64d3"  # device render for Eric
+#device_id = "27e5abfcc1ac54f500b8c4dcdf2c64d3"      # device render for Eric
+device_id = "36ad443c99e81cfad04472861742cb8a"      # device for JV
 
 # ELLIPSE
 #json_file = "DeviceFiles/Ellipse/device.index.json.gz"
 #device_id = "318a5dce269fc505ef665148c36a7677"
 
 # SILO
-json_file = "DeviceFiles/Silos/device.index.json.gz"
-device_id = "698bd2fc89cbb7439c2268a564569811"
+#json_file = "DeviceFiles/Silos/device.index.json.gz"
+#device_id = "698bd2fc89cbb7439c2268a564569811"
 #device_id = "ba263aa69972dfe6815121e83a28c923"      # device render for Eric
+#device_id = "df27644a2bd4abae1eaddbcd8210428c"      # device for JV
 
 #MOTHEYE
 #json_file = "DeviceFiles/MothEye/device.index.json.gz"
-#device_id = "12b881f6b38c677000cf1e85818a0332"     # original device
+#device_id = "12b881f6b38c677000cf1e85818a0332"      # original device
 #device_id = "295ff62a2266c881b2bd83084cd8be43"      # my modified device
 
 # MISC
@@ -33,13 +35,13 @@ device_id = "698bd2fc89cbb7439c2268a564569811"
 
 ####################################################
 
-pov_name = "test1.pov"
-image_name = "test1.png"
-#pov_name = "test1_ortho.pov"
-#image_name = "test1_ortho.png"
+name = "JVcyl_4_IOR"
+
+pov_name = name + ".pov"
+image_name = name + ".png"
 
 height = 800
-num_UC = 3
+num_UC = 5
 
 # Open device dictionary
 with signac.Collection.open(json_file, compresslevel=1) as d_index:
@@ -56,18 +58,18 @@ extra_finish = "finish \n\t\t\t{ob:c} \n\t\t\t".format(ob=123) \
         + "{cb:c}\n\t\t".format(cb=125)
 
 custom_colors = [
-#        [1.000, 0.000, 0.000],
-#        [1.000, 0.506, 0.000], 
-#        [1.000, 0.957, 0.000], 
-#        [0.027, 0.824, 0.804], 
-#        [0.024, 0.678, 1.000], 
+        [1, 1, 1],
         [0.212, 0.211, 0.835],
         [0.000, 0.000, 1.000], 
         [1.000, 0.000, 0.000]
         ]
 
 # Starts at bottom coating layer and builds up (micrometers)
-# [material, thickness]
+# [material_name, thickness]
+#extra_coatings = [
+#        ["coating1", 0.308],
+#        ["coating3", 0.130]]
+
 extra_coatings = [ 
         ["coating1", 0.01824],
         ["coating2", 0.04277],
@@ -80,19 +82,25 @@ extra_coatings = [
         ["coating1", 0.01557],
         ["coating3", 0.130]]
 
+# Coating color and ior definitions
+bg_coating_ior_dict = { 
+        "coating1":1.20,
+        "coating2":1.50,
+        "coating3":1.40}
+
 bg_coating_color_dict = { 
-        "coating1":[1, 0, 0, 0, 0.65],
-        "coating2":[0, 1, 0, 0, 0.65],
-        "coating3":[0, 0, 1, 0, 0.65]}
+        "coating1":[1.0, 0.1, 0.1, 0, 0],
+        "coating2":[0.1, 1.0, 0.1, 0, 0],
+        "coating3":[0.1, 0.1, 1.0, 0, 0]}
 
 write_pov(device_dict, pov_name, image_name, 
         height = height, width = height, 
         num_UC_x = num_UC, num_UC_y = num_UC, 
         camera_style = "perspective", 
         camera_rotate = 60, ortho_angle = 30, 
-        add_edge_buffer = False, 
         coating_layers = extra_coatings, 
         coating_color_dict = bg_coating_color_dict,
+        coating_ior_dict = bg_coating_ior_dict,
         use_default_colors = False, custom_colors = custom_colors, 
         use_finish = "dull", custom_finish = extra_finish, 
         display = False, render = True , num_threads = 3, 

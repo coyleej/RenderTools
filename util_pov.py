@@ -146,7 +146,6 @@ def create_polygon(center, end, halfwidths, points, device_dims, angle=0, for_si
     poly_string += "<{0}, {1}> \n\t\t".format(points[0][0], points[0][1])
 
     device += "rotate <90, 0, 0> \n\t\t"
-#    device += "translate <{0}, {1}, {2}> \n\t\t".format((-1.0 * center[0]), (-1.0 * center[1]), (end[0] - device_dims[2]))
     device += "translate <{0}, {1}, {2}> \n\t\t".format( \
             (-1.0 * center[0]), (-1.0 * center[1]), (end[0] - device_dims[2]))
 
@@ -159,11 +158,28 @@ def create_polygon(center, end, halfwidths, points, device_dims, angle=0, for_si
 
 def add_slab(lattice_vecs, thickness, device_dims, layer_type="substrate"):
     """
-    Adds a slab using the lattice vectors as the dimensions
-    Use this for the substrate and any coating layers
+    Adds a slab using the lattice vectors as the dimensions. Use this 
+    for the substrate, background, and any coating layers. You must
+    specify the type in the function call. Designed so that lattice_vecs
+    and device_dims can be either a unit cell or the full device.
 
-    :param center: Point on the x,y-plane where the shape is centered
+    :param lattice_vecs: The lattice vectors defining the slab. In the 
+                         case of the substrate and coatings, these are
+                         the full length and width of the material
     :type center: list
+
+    :param thickness: Thickness of the layer
+    :type center: float
+
+    :param device_dims: Dimensions of the existing device, in order to
+                        know how far to shift the slab. Depending on the
+                        slab to be inserted.
+    :type center: list
+
+    :param thickness: Type of the layer to be inserted. Determines which
+                      direction everything is shifted. Accepts arguments
+                      "coating", "background", and "substrate" (default)
+    :type center: string
 
     :return: POV-Ray code describing the slab and the slab halfwidths
     :rtype: tuple
@@ -177,7 +193,7 @@ def add_slab(lattice_vecs, thickness, device_dims, layer_type="substrate"):
     end = [(-0.5 * thickness), (0.5 * thickness)]
 
     # Defining slab vertices from lattice_vecs
-    # The shape is closed later (Povray requires that the first & last point match)
+    # The shape is closed later (Povray requires that the first & last points match)
     points = [ [0, 0],
             [lattice_vecs[0][0], lattice_vecs[0][1]],
             [(lattice_vecs[0][0] + lattice_vecs[1][0]), (lattice_vecs[0][1] + lattice_vecs[1][1])],
@@ -186,7 +202,7 @@ def add_slab(lattice_vecs, thickness, device_dims, layer_type="substrate"):
     # Write slab layer, adding teensy extra height to prevent weird artifacts
     slab = "prism\n\t\t{ob:c}\n\t\t".format(ob=123) \
             + "linear_sweep \n\t\tlinear_spline \n\t\t" \
-            + "{0}, {1}, {2} \n\t\t".format(end[0] * 1.000001, end[1] * 1.000001, (len(points) + 1))
+            + "{0}, {1}, {2} \n\t\t".format(end[0] * 1.0, end[1] * 1.000001, (len(points) + 1))
 
     for i in range(len(points)):
         points[i][0] -= halfwidth[0]
@@ -216,7 +232,9 @@ def add_slab(lattice_vecs, thickness, device_dims, layer_type="substrate"):
 
 def update_device_dims(device_dims, new_x, new_y, new_z):
     """
-    Tracks maximum unit device dimensions to aid in camera placement
+    Tracks maximum unit device dimensions to aid in camera placement.
+    MAlso used to track coating thickness in the case of multiple
+    coatings.
     
     These dimensions will always be positive, even though the device 
     is built with the top at z=0.
@@ -288,14 +306,11 @@ def guess_camera(device_dims, coating_dims=[0,0,0], camera_style="perspective", 
         print("WARNING: Camera parameters have not been optimized for this style!")
 
     # Offset for x,y-dimensions
-    #camera_offset = x_offset * max(device_dims) 
     camera_offset = x_offset * (max(device_dims) + 0.8 * max(coating_dims))
 
     camera_position[0] = (camera_offset + device_dims[0]) * cos(angle)
     camera_position[1] = (camera_offset + device_dims[0]) * sin(angle)
-    #camera_position[2] = z_scale * (device_dims[2])
     camera_position[2] = z_scale * (device_dims[2] + 0.5 * coating_dims[2])
-    #camera_look_at = [center[0], center[1], (-0.66 * device_dims[2])]
     camera_look_at = [center[0], center[1], (-0.66 * device_dims[2] + 0.50 * coating_dims[2])]
 
     light_offset = camera_offset * 1.25 
@@ -310,7 +325,7 @@ def guess_camera(device_dims, coating_dims=[0,0,0], camera_style="perspective", 
     return camera_position, camera_look_at, light_position
 
 def color_and_finish(dev_string, default_color_dict, material, use_default_colors, 
-        custom_color = [0, 0.6667, 0.667, 0, 0], use_finish = "dull", 
+        custom_color = [0, 0.6667, 0.667, 0, 0], ior = 1, use_finish = "dull",
         custom_finish = ""):
     """ 
     Sets the color and finish of the object and appends this to the device string.
@@ -327,6 +342,10 @@ def color_and_finish(dev_string, default_color_dict, material, use_default_color
 
     If using the "custom" finish, the finish details must be specified in the
     custom_finish variable or it will default to "dull".
+
+    If you request one of the following finishes, the code will overwrite 
+    your transmit and filter values. If you do now want this to happen, you
+    should declare your own custom finish.
 
     :param dev_string: String describing the device
     :type dev_string: str
@@ -351,6 +370,9 @@ def color_and_finish(dev_string, default_color_dict, material, use_default_color
                          optional and both default to 0.
     :type custom_color: list
 
+    :param ior: Index of refraction for transparent finish only
+    :type ior: float
+
     :param use_finish: Select the finish that you want. Current options are:
                        "material", "Si", "SiO2", "glass", "bright_metal", 
                        "dull_metal", "irid", "billiard", "dull", "custom"
@@ -361,11 +383,14 @@ def color_and_finish(dev_string, default_color_dict, material, use_default_color
     :type custom_finish: str
     """
 
+    # These two values only matter for SiO2, translucent, glass, and irid finishes
+    transmit, filter_ = 0, 0
+
+    # Set finish
     if use_finish == "material":
         use_finish = material
 
     if use_finish == "Si" or use_finish == "silicon":
-        filter_ = 0
         extra_finish = "finish \n\t\t\t{ob:c} \n\t\t\t".format(ob=123) \
                 + "diffuse 0.2 \n\t\t\t" \
                 + "brilliance 5 \n\t\t\t" \
@@ -389,11 +414,16 @@ def color_and_finish(dev_string, default_color_dict, material, use_default_color
                 + "interior {ob:c} ior 1.45 {cb:c}\n\t\t".format(ob=123, cb=125)
 
     elif use_finish == "translucent":
-        filter_ = 0.65
+        transmit = 0.02
+        filter_ = 0.50
         extra_finish = "finish \n\t\t\t{ob:c} \n\t\t\t".format(ob=123) \
                 + "emission 0.25 \n\t\t\t" \
-                + "diffuse 0 \n\t\t\t" \
+                + "diffuse 0.75 \n\t\t\t" \
+                + "specular 0.4 \n\t\t\t" \
+                + "brilliance 4 \n\t\t\t" \
+                + "reflection {ob:c} 0.5 fresnel on {cb:c}\n\t\t\t".format(ob=123, cb=125) \
                 + "{cb:c}\n\t\t".format(cb=125) \
+                + "interior {ob:c} ior {0} {cb:c}\n\t\t".format(ior, ob=123, cb=125)
 
     elif use_finish == "glass":
         filter_ = 0.95
@@ -406,7 +436,6 @@ def color_and_finish(dev_string, default_color_dict, material, use_default_color
                 + "interior {ob:c} ior 1.5 {cb:c}\n\t\t".format(ob=123, cb=125)
 
     elif use_finish == "dull_metal":
-        filter_ = 0
         extra_finish = "finish \n\t\t\t{ob:c} \n\t\t\t".format(ob=123) \
                 + "emission 0.1 \n\t\t\t" \
                 + "diffuse 0.1 \n\t\t\t" \
@@ -417,7 +446,6 @@ def color_and_finish(dev_string, default_color_dict, material, use_default_color
                 + "{cb:c}\n\t\t".format(cb=125)
 
     elif use_finish == "bright_metal":
-        filter_ = 0
         extra_finish = "finish \n\t\t\t{ob:c} \n\t\t\t".format(ob=123) \
                 + "emission 0.2 \n\t\t\t" \
                 + "diffuse 0.3 \n\t\t\t" \
@@ -439,7 +467,6 @@ def color_and_finish(dev_string, default_color_dict, material, use_default_color
                 + "interior {ob:c} ior 1.5 {cb:c}\n\t\t".format(ob=123, cb=125)
 
     elif use_finish == "billiard":
-        filter_ = 0
         extra_finish = "finish \n\t\t\t{ob:c} \n\t\t\t".format(ob=123) \
                 + "ambient 0.3 \n\t\t\t" \
                 + "diffuse 0.8 \n\t\t\t" \
@@ -464,8 +491,9 @@ def color_and_finish(dev_string, default_color_dict, material, use_default_color
         color.append(0)     # filter
         color.append(0)     # transmit
 
-    if use_finish in ["SiO2", "translucent", "glass", "irid"]: # and use_default_colors == True:
-        print("\nWARNING: color_and_finish is overriding your filter value!!\n")
+    if use_finish in ["SiO2", "translucent", "glass", "irid"]: 
+        print("\nWARNING: color_and_finish is overriding transmit and/or filter value!!")
+        color[3] = transmit
         color[4] = filter_
 
     dev_string += "pigment {ob:c} ".format(ob=123) \

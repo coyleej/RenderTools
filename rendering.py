@@ -5,9 +5,10 @@ def write_pov(device_dict, pov_name, image_name,
     camera_rotate = 60, ortho_angle = 30, 
     camera_loc = [], look_at = [0,0,0], light_loc = [], 
     up_dir = [0, 0, 1.33], right_dir = [0, 1, 0], sky = [0, 0, 1.33], 
-    shadowless = False, add_edge_buffer = False, 
+    shadowless = False, 
     coating_layers = [], 
-    coating_color_dict = {}, 
+    coating_color_dict = {"background":[1, 0, 0, 0, 0]}, 
+    coating_ior_dict = {"background":1.0}, 
     bg_color = [1.0, 1.0, 1.0], transparent = True, antialias = True, 
     use_default_colors = True, custom_colors = [[0, 0.667, 0.667, 0, 0]], 
     use_finish = "", custom_finish = "", 
@@ -107,12 +108,6 @@ def write_pov(device_dict, pov_name, image_name,
                 upside down (default [0, 0, 1.33])
     :type sky: list
 
-    :param add_edge_buffer: Adds one unit cell thickness to substrate 
-                            to minimize washout from background by 
-                            setting to True (default False)
-    :type add_edge_buffer: bool
-
-
     :param coating_layers: List containing material and thickness of each
                            layer, starting with the bottom layer and
                            working up
@@ -121,6 +116,10 @@ def write_pov(device_dict, pov_name, image_name,
     :param bg_coating_color_dict: Dictionary containing color definitions
                                   for all coating layers present
     :type bg_coating_color_dict: dict
+
+    :param bg_coating_ior_dict: Dictionary containing ior definitions
+                                for all coating layers present
+    :type bg_coating_ior_dict: dict
 
     :param bg_color: Sets the background color (default [1.0, 1.0, 1.0])
     :type bg_color: list
@@ -211,10 +210,9 @@ def write_pov(device_dict, pov_name, image_name,
 
     # Zero layer
     # Currently no need to render anything from this layer
-    #background_0L = deep_access(device_dict, ["statepoint", "zero_layer", "background"])
-    #thickness_0L = deep_access(device_dict, ["statepoint", "zero_layer", "thickness"])
 
-    # Device layers
+    #### ---- DEVICE UNIT CELL ---- ####
+
     device += "#declare UnitCell = "
     device += "merge\n\t{ob:c}\n\t".format(ob=123)
     ##device += "union\n\t{ob:c}\n\t".format(ob=123)
@@ -227,6 +225,7 @@ def write_pov(device_dict, pov_name, image_name,
             thickness = deep_access(device_dict, ['statepoint', 'dev_layers', str(i), 'thickness'])
             end = [float(-1.0 * device_dims[2]), float(-1.0 * device_dims[2] - thickness)]
             # end = [top, bottom]
+
 
             device += "union\n\t{ob:c}\n\t".format(ob=123)
 
@@ -245,11 +244,15 @@ def write_pov(device_dict, pov_name, image_name,
                         layer_type="background")
                 bg_slab = color_and_finish(bg_slab, default_color_dict, background, 
                         use_default_colors = False, 
-                        custom_color=coating_color_dict[background],
+                        custom_color = coating_color_dict[background],
+                        ior = coating_ior_dict[background],
                         use_finish = "translucent")
-                        #custom_color=[1,0,0,0,0.65], 
 
                 device += bg_slab
+
+                # Prevent end caps from being overwritten by background layer(s)
+                end[0] -= 0.00010
+                end[1] -= 0.00010
 
             # Determine layer types
             layer_type = []
@@ -422,7 +425,8 @@ def write_pov(device_dict, pov_name, image_name,
     # End unit cell merge
     device += "{cb:c}\n\n".format(cb=125)
 
-    # Replicate unit cell
+    #### ---- REPLICATE UNIT CELL ---- ####
+
     # Shift translation so that the original device is roughly in the center
     device += "merge\n\t{ob:c} \n\t".format(ob=123)
 
@@ -439,26 +443,8 @@ def write_pov(device_dict, pov_name, image_name,
                     ((i - adj_x) * lattice_vecs[0][0]), ((j - adj_y) * lattice_vecs[1][1]), 0, \
                     ob=123, cb=125)
 
-    # Add buffer around the edge to minimize reflection washout
-    if add_edge_buffer:
-        min_x = -1.0 * (adj_x + 1.5) * lattice_vecs[0][0]
-        max_x = (num_UC_x - adj_x + 0.5) * lattice_vecs[1][1]
-        min_y = -1.0 * (adj_y + 1.5) * lattice_vecs[0][0]
-        max_y = (num_UC_y - adj_y + 0.5) * lattice_vecs[1][1]
-        #end = unchanged from original substrate box
-        #end = [(-1.0 * device_dims[2]), (-1.0 * device_dims[2] - 0.001)]
+    #### ---- COATING AND SUBSTRATE ---- ####
 
-        device += "box\n\t\t{ob:c}\n\t\t".format(ob=123) \
-                + "<{0}, {1}, {2}>\n\t\t".format(min_x, min_y, (end[1])) \
-                + "<{0}, {1}, {2}>\n\t\t".format(max_x, max_y, (end[0])) 
-
-        device = color_and_finish(device, default_color_dict, material, \
-                use_default_colors = True, use_finish = "dull")
-
-    # End replicate merge
-    device += "{cb:c}\n\n".format(cb=125)
-
-    # Setting up to add substrate and coating
     # temp_vecs are the full dimensions of the material
     temp_vecs = deepcopy(lattice_vecs)
     for j in range(2):
@@ -478,7 +464,25 @@ def write_pov(device_dict, pov_name, image_name,
     coating_dims = update_device_dims(coating_dims, 
             coating_dims[0], coating_dims[1], 0)
 
-    # Substrate layer
+    # Add coatings on top of device
+    if coating_layers != []:
+        for j in range(len(coating_layers)):
+            device += "// Coating layer {0}\n\t".format(j + 1)
+            coating, halfwidth = add_slab(temp_vecs, coating_layers[j][1], \
+                    coating_dims, layer_type="coating")
+            coating = color_and_finish(coating, default_color_dict, \
+                    background, use_default_colors = False, \
+                    custom_color=coating_color_dict[coating_layers[j][0]], \
+                    ior=coating_ior_dict[coating_layers[j][0]], \
+                    use_finish = "translucent")
+            device += coating
+
+            coating_dims = update_device_dims(coating_dims, 0, 0, coating_layers[j][1])
+
+    # End device and coating merge
+    device += "{cb:c}\n\n".format(cb=125)
+
+    # Substrate
     device += "// Substrate\n\t"
     material = "subst"
     thickness_sub = max(1, deep_access(device_dict, ['statepoint', 'sub_layer', 'thickness']))
@@ -494,27 +498,7 @@ def write_pov(device_dict, pov_name, image_name,
 
     device_dims = update_device_dims(device_dims, 0, 0, thickness_sub)
 
-    # Add extra coatings on top of device
-    # Merge coating layers
-    device += "union\n\t{ob:c} \n\t".format(ob=123)
-
-    if coating_layers != []:
-        for j in range(len(coating_layers)):
-            device += "// Coating layer {0}\n\t".format(j + 1)
-            coating, halfwidth = add_slab(temp_vecs, coating_layers[j][1], \
-                    coating_dims, layer_type="coating")
-            coating = color_and_finish(coating, default_color_dict, \
-                    background, use_default_colors = False, \
-                    custom_color=coating_color_dict[coating_layers[j][0]], \
-                    use_finish = "translucent")
-            device += coating
-
-            coating_dims = update_device_dims(coating_dims, 0, 0, coating_layers[j][1])
-
-    # End coating merge
-    device += "{cb:c}\n\n".format(cb=125)
-
-    ## HEADER AND CAMERA INFO
+    #### ---- HEADER AND CAMERA ---- ####
 
     # Cap how far out the camera will go when replicating unit cell
     device_dims = update_device_dims(device_dims, \
@@ -535,6 +519,7 @@ def write_pov(device_dict, pov_name, image_name,
                 guess_camera(device_dims, coating_dims=coating_dims, \
                 camera_style=camera_style, angle = camera_rotate, center=[0, 0])
 
+    #### ---- WRITE POV FILE ---- ####
     header = "#version 3.7;\n" 
     header += "global_settings {ob:c} assumed_gamma 1.0 {cb:c}\n\n".format(ob=123, cb=125) 
     header += "background {ob:c} ".format(ob=123) \
@@ -561,11 +546,10 @@ def write_pov(device_dict, pov_name, image_name,
                 + "color rgb <1.0,1.0,1.0> \n\t" \
                 + "{cb:c}\n\n".format(cb=125)
 
-    # WRITE POV FILE
     fID.write(header + device)
     fID.close()
 
-    # RENDER
+    #### ---- RENDER ---- ####
     command = "povray Input_File_Name={0} Output_File_Name={1} ".format(pov_name, image_name) \
             + "+H{0} +W{1}".format(height, width)
 

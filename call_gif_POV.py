@@ -77,7 +77,6 @@ for i in range(len(device_list)):
             camera_loc = camera_loc,
             look_at = camera_look_at, 
             light_loc = light_loc, 
-            add_edge_buffer = False, 
             use_default_colors = False, custom_colors = [custom_colors[i]], 
             use_finish = "dull", custom_finish = extra_finish, 
             display = False, render = True , num_threads = 4, 
