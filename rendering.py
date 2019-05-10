@@ -223,15 +223,15 @@ def write_pov(device_dict, pov_name, image_name,
             shapes = deep_access(device_dict, ['statepoint', 'dev_layers', str(i), 'shapes'])
             background = deep_access(device_dict, ['statepoint', 'dev_layers', str(i), 'background'])
             thickness = deep_access(device_dict, ['statepoint', 'dev_layers', str(i), 'thickness'])
-            end = [float(-1.0 * device_dims[2]), float(-1.0 * device_dims[2] - thickness)]
             # end = [top, bottom]
-
+            end = [float(-1.0 * device_dims[2]), float(-1.0 * device_dims[2] - thickness)]
 
             device += "union\n\t{ob:c}\n\t".format(ob=123)
 
             # Check for background material
             bg_slab = ""
-            if background != "Vacuum":
+            #if background != "Vacuum":
+            if background in coating_color_dict:
                 # Forcing elimination of internal boundaries
                 # (They appear if you use lattice_vecs instead of temp_vecs)
                 temp_vecs = deepcopy(lattice_vecs)
@@ -264,10 +264,29 @@ def write_pov(device_dict, pov_name, image_name,
                 else:
                     layer_type.append(deep_access(shapes, [str(ii), 'shape']))
 
+#            # Old code, has issues with "false" silos
+#            if has_silo == True:
+#                for iii in range(len(layer_type)-1):
+#                    if layer_type[iii] != "Vacuum" and layer_type[iii+1] == "Vacuum":
+#                        layer_type[iii] = "silo"
+
+            # Set type as silo, check for dimensions of zero that confuse povray
             if has_silo == True:
                 for iii in range(len(layer_type)-1):
                     if layer_type[iii] != "Vacuum" and layer_type[iii+1] == "Vacuum":
-                        layer_type[iii] = "silo"
+                        layer_shape = deep_access(shapes, [str(iii+1), 'shape'])
+
+                        # Checks shapes containing radii for zero dimensions
+                        if layer_shape == "circle" and deep_access(shapes, [str(iii+1), 'shape_vars', 'radius']) == 0:
+                            print("Warning: Ignoring vacuum layer with dimensions equal to zero")
+
+                        # Checks shapes containing halfwidths for zero dimensions         
+                        elif layer_shape in ["ellipse", "rectangle"] and deep_access(shapes, [str(iii+1), 'shape_vars', 'halfwidths']) == [0, 0]:
+                            print("Warning: Ignoring vacuum layer with dimensions equal to zero")
+
+                        # Is actually a silo
+                        else:
+                            layer_type[iii] = "silo"
 
             # Write device layers
             for k in range(len(layer_type)):

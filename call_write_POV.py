@@ -8,10 +8,15 @@ from os import system
 #device_id = "318a5dce269fc505ef665148c36a7677"
 
 # CYLINDER
-json_file = "DeviceFiles/Cylinders/device.index.json.gz"
+#json_file = "DeviceFiles/Cylinders/device.index.json.gz"
 #device_id = "318a5dce269fc505ef665148c36a7677"
 #device_id = "27e5abfcc1ac54f500b8c4dcdf2c64d3"      # device render for Eric
-device_id = "36ad443c99e81cfad04472861742cb8a"      # device for JV
+#device_id = "36ad443c99e81cfad04472861742cb8a"      # device for JV
+#device_id = "a0ee6d635d581f6157393ba05eb81724"      # test for dimensions of zero (false silos)
+
+# HEX
+#json_file = "DeviceFiles/Hex/device.index.json.gz"
+#device_id = "318a5dce269fc505ef665148c36a7677"
 
 # ELLIPSE
 #json_file = "DeviceFiles/Ellipse/device.index.json.gz"
@@ -24,18 +29,18 @@ device_id = "36ad443c99e81cfad04472861742cb8a"      # device for JV
 #device_id = "df27644a2bd4abae1eaddbcd8210428c"      # device for JV
 
 #MOTHEYE
-#json_file = "DeviceFiles/MothEye/device.index.json.gz"
-#device_id = "12b881f6b38c677000cf1e85818a0332"      # original device
+json_file = "DeviceFiles/MothEye/device.index.json.gz"
+device_id = "12b881f6b38c677000cf1e85818a0332"      # original device
 #device_id = "295ff62a2266c881b2bd83084cd8be43"      # my modified device
 
 # MISC
-#json_file = "DeviceFiles/Test/device.index.json.gz"
-#device_id = "698bd2fc89cbb7439c2268a564569811"
+json_file = "DeviceFiles/Test/device.index.json.gz"
+device_id = "698bd2fc89cbb7439c2268a564569811"
 #device_id = "318a5dce269fc505ef665148c36a7677"
 
 ####################################################
 
-name = "JVcyl_4_IOR"
+name = "hex_test"
 
 pov_name = name + ".pov"
 image_name = name + ".png"
@@ -70,17 +75,17 @@ custom_colors = [
 #        ["coating1", 0.308],
 #        ["coating3", 0.130]]
 
-extra_coatings = [ 
-        ["coating1", 0.01824],
-        ["coating2", 0.04277],
-        ["coating1", 0.02885],
-        ["coating2", 0.04662],
-        ["coating1", 0.02885],
-        ["coating2", 0.04662],
-        ["coating1", 0.02885],
-        ["coating2", 0.05224],
-        ["coating1", 0.01557],
-        ["coating3", 0.130]]
+extra_coatings = [ ]
+#        ["coating1", 0.01824],
+#        ["coating2", 0.04277],
+#        ["coating1", 0.02885],
+#        ["coating2", 0.04662],
+#        ["coating1", 0.02885],
+#        ["coating2", 0.04662],
+#        ["coating1", 0.02885],
+#        ["coating2", 0.05224],
+#        ["coating1", 0.01557],
+#        ["coating3", 0.130]]
 
 # Coating color and ior definitions
 bg_coating_ior_dict = { 
