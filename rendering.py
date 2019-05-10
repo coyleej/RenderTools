@@ -459,8 +459,9 @@ def write_pov(device_dict, pov_name, image_name,
     for i in range(num_UC_x):
         for j in range(num_UC_y):
             device += "object {ob:c} UnitCell translate <{0}, {1}, {2}> {cb:c}\n\t".format( \
-                    ((i - adj_x) * lattice_vecs[0][0]), ((j - adj_y) * lattice_vecs[1][1]), 0, \
-                    ob=123, cb=125)
+                    ((i - adj_x) * lattice_vecs[0][0] - (j - adj_y) * lattice_vecs[1][0]), \
+                    ((j - adj_y) * lattice_vecs[1][1] - (i - adj_x) * lattice_vecs[0][1]), \
+                    0, ob=123, cb=125)
 
     #### ---- COATING AND SUBSTRATE ---- ####
 
@@ -473,11 +474,11 @@ def write_pov(device_dict, pov_name, image_name,
     # Slabs must remain centered at origin if num_UC_* is odd
     # Must shift slab by one unit cell if even
     if num_UC_x % 2 == 0:
-        for k in range(2):
-            coating_dims[0] += 0.5 * lattice_vecs[k][0]
+        coating_dims[0] += 0.5 * lattice_vecs[0][0]
+        coating_dims[0] -= 0.5 * lattice_vecs[1][0]
     if num_UC_y % 2 == 0:
-        for k in range(2):
-            coating_dims[1] += 0.5 * lattice_vecs[k][1]
+        coating_dims[1] += 0.5 * lattice_vecs[1][1]
+        coating_dims[1] -= 0.5 * lattice_vecs[0][1]
 
     substrate_dims = [coating_dims[0], coating_dims[1], device_dims[2]]
     coating_dims = update_device_dims(coating_dims, 

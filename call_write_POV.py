@@ -15,8 +15,10 @@ from os import system
 #device_id = "a0ee6d635d581f6157393ba05eb81724"      # test for dimensions of zero (false silos)
 
 # HEX
-#json_file = "DeviceFiles/Hex/device.index.json.gz"
-#device_id = "318a5dce269fc505ef665148c36a7677"
+json_file = "DeviceFiles/Hex/device.index.json.gz"
+#device_id = "318a5dce269fc505ef665148c36a7677"     # cylinder
+device_id = "12b881f6b38c677000cf1e85818a0332"      # motheye
+#device_id = "698bd2fc89cbb7439c2268a564569811"     # misc
 
 # ELLIPSE
 #json_file = "DeviceFiles/Ellipse/device.index.json.gz"
@@ -29,24 +31,25 @@ from os import system
 #device_id = "df27644a2bd4abae1eaddbcd8210428c"      # device for JV
 
 #MOTHEYE
-json_file = "DeviceFiles/MothEye/device.index.json.gz"
-device_id = "12b881f6b38c677000cf1e85818a0332"      # original device
+#json_file = "DeviceFiles/MothEye/device.index.json.gz"
+#device_id = "12b881f6b38c677000cf1e85818a0332"      # original device
 #device_id = "295ff62a2266c881b2bd83084cd8be43"      # my modified device
 
 # MISC
-json_file = "DeviceFiles/Test/device.index.json.gz"
-device_id = "698bd2fc89cbb7439c2268a564569811"
+#json_file = "DeviceFiles/Test/device.index.json.gz"
+#device_id = "698bd2fc89cbb7439c2268a564569811"
 #device_id = "318a5dce269fc505ef665148c36a7677"
 
 ####################################################
 
-name = "hex_test"
+name = "motheye_hex"
+#name = "hex_test"
 
 pov_name = name + ".pov"
 image_name = name + ".png"
 
 height = 800
-num_UC = 5
+num_UC = 6
 
 # Open device dictionary
 with signac.Collection.open(json_file, compresslevel=1) as d_index:
@@ -107,6 +110,6 @@ write_pov(device_dict, pov_name, image_name,
         coating_color_dict = bg_coating_color_dict,
         coating_ior_dict = bg_coating_ior_dict,
         use_default_colors = False, custom_colors = custom_colors, 
-        use_finish = "dull", custom_finish = extra_finish, 
+        use_finish = "billiard", custom_finish = extra_finish, 
         display = False, render = True , num_threads = 3, 
         open_png = True)
