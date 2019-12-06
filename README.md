@@ -1,7 +1,7 @@
 # RenderTools
 POV-Ray tools for use with MANTIS
 
-This repository is a stand-alone development branch for the MANTIS rendering tools. It is actively under development, so some of the scripts may be semi-functional. If you want something that is stable, please refer to MANTIS. (MANTIS can be found here: https://github.com/harperes/MANTIS) 
+This repository is a stand-alone development branch for the MANTIS rendering tools. It is actively under development, so some of the scripts may be semi-functional. If you want something stable, please refer to MANTIS. (MANTIS can be found here: https://github.com/harperes/MANTIS) 
 
 The following is a brief description of what all files here do. For additional details, please refer to the docstrings in the functions.
 

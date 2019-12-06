@@ -1,265 +1,5 @@
-def create_cylinder(center, end, radius, for_silo=False):
-    """ 
-    Creates povray instructions for a cylindrical pillar 
-
-    :param center: Point on the x,y-plane where the shape is centered
-    :type center: list
-
-    :param end: The lower and upper limits on the z-dimensions
-    :type end: list
-      
-    :param radius: Cylinder radius
-    :type radius: float
-
-    :param for_silo: Adjusts the syntax if the shape is part of a silo
-    :type for_silo: bool
-
-    :return: POV-Ray code describing the cylinder
-    :rtype: string
-
-    """
-    cyl_string = "cylinder \n\t\t{ob:c}\n\t\t ".format(ob=123) \
-            + "<{0}, {1}, {2:.5f}>, \n\t\t".format(center[0], center[1], end[0]) \
-            + "<{0}, {1}, {2:.5f}>, \n\t\t".format(center[0], center[1], end[1]) 
-
-    if for_silo:
-        cyl_string += "{0} {cb:c}\n\t\t".format(radius, cb=125)
-    else:
-        cyl_string += "{0}\n\t\t".format(radius)
-
-    return cyl_string
-
-def create_ellipse(center, end, halfwidths, angle=0, for_silo=False):
-    """ 
-    Creates povray instructions for a ellipical pillar 
-
-    :param center: Point on the x,y-plane where the shape is centered
-    :type center: list
-
-    :param end: The lower and upper limits on the z-dimensions
-    :type end: list
-      
-    :param halfwidths: Semi-major and semi-minor axes of the ellipse
-    :type halfwidths: list
-
-    :param angle: Rotation angle (deg) of the ellipse about its center
-    :type angle: float
-
-    :param for_silo: Adjusts the syntax if the shape is part of a silo
-    :type for_silo: bool
-
-    :return: POV-Ray code describing the elliptical cylinder
-    :rtype: string
-    """
-    ellipse_string = "cylinder \n\t\t{ob:c}\n\t\t ".format(ob=123) \
-            + "<{0}, {1}, {2:.5f}>, \n\t\t".format(center[0], center[1], end[0]) \
-            + "<{0}, {1}, {2:.5f}>, 1 \n\t\t".format(center[0], center[1], end[1]) \
-            + "scale <{0}, {1}, 1> \n\t\t".format(halfwidths[0], halfwidths[1])
-
-    if angle != 0:      # in degrees
-        ellipse_string += "rotate <0, 0, {0}> \n\t\t".format(angle)
-    if for_silo:
-        ellipse_string += "{cb:c}\n\t\t".format(cb=125)
-
-    return ellipse_string
-
-def create_rectangle(center, end, halfwidths, angle=0, for_silo=False):
-    """ 
-    Creates povray instructions for a rectangular box
-
-    :param center: Point on the x,y-plane where the shape is centered
-    :type center: list
-
-    :param end: The lower and upper limits on the z-dimensions
-    :type end: list
-
-    :param halfwidths: Halfwidths describing lengths in the x-, y-dims
-    :type halfwidths: list
-
-    :param angle: Rotation angle (deg) of the rectangle about its center
-    :type angle: float
-
-    :param for_silo: Adjusts the syntax if the shape is part of a silo
-    :type for_silo: bool
-
-    :return: POV-Ray code describing the box
-    :rtype: string
-    """
-    rect_string = "box\n\t\t{ob:c}\n\t\t".format(ob=123) \
-            + "<{0}, ".format(center[0] - halfwidths[0]) \
-            + "{0}, {1:.5f}>\n\t\t".format((center[1] - halfwidths[1]), end[0]) \
-            + "<{0} ".format(center[0] + halfwidths[0]) \
-            + "{0}, {1:.5f}>\n\t\t".format((center[1] + halfwidths[1]), end[1])
-
-    if angle != 0:      # in degrees
-        rect_string += "rotate <0, 0, {0}> \n\t\t".format(angle)
-    if for_silo:
-        rect_string += "{cb:c}\n\t\t".format(cb=125)
-
-    return rect_string
-
-def create_polygon(center, end, halfwidths, points, device_dims, angle=0, for_silo=False):
-    """ 
-    Creates povray instructions for a polygon/prism
-
-    ** Currently untested!! **
-
-    :param center: Point on the x,y-plane where the shape is centered
-    :type center: list
-
-    :param end: The lower and upper limits on the z-dimensions
-    :type end: list
-
-    :param num_points: The number of vertices
-    :type num_points: list
-
-    :param points: List of x-,y-coordinates in counter-clockwise order
-    :type points: list
-
-    :param angle: Rotation angle (deg) of the polygon about its center
-    :type angle: float
-
-    :param for_silo: Adjusts the syntax if the shape is part of a silo
-    :type for_silo: bool
-
-    :return: POV-Ray code describing the prism
-    :rtype: string
-    """
-
-    print("\ncreate_polygon is UNTESTED!\n")
-    print("The substrate portion of write_POV contains a working prism implementation\n")
-
-    # Povray requires that you close the shape
-    # The first and last point must be the same
-    num_points = len(points) + 1
-
-    poly_string = "prism\n\t\t{ob:c}\n\t\t".format(ob=123) \
-            + "linear_sweep \n\t\tlinear_spline \n\t\t" \
-            + "{0:.5f}, {1:.5f}, {2} \n\t\t".format(end[0], end[1], num_points)
-
-    # Must spawn prism at origin, then rotate and translate into position
-    # Thanks, povray's weird coordinate system
-    for i in range(len(num_points)):
-        points[i][0] -= (center[0] + halfwidth[0])
-        points[i][1] -= (center[1] + halfwidth[1])
-        poly_string += "<{0}, {1}>, ".format(points[i][0], points[i][1])
-    poly_string += "<{0}, {1}> \n\t\t".format(points[0][0], points[0][1])
-
-    device += "rotate <90, 0, 0> \n\t\t"
-    device += "translate <{0}, {1}, {2}> \n\t\t".format( \
-            (-1.0 * center[0]), (-1.0 * center[1]), (end[0] - device_dims[2]))
-
-    if angle != 0:      # in degrees
-        poly_string += "rotate <0, 0, {0}> \n\t\t".format(angle)
-    if for_silo:
-        poly_string += "{cb:c}\n\t\t".format(cb=125)
-
-    return poly_string
-
-def add_slab(lattice_vecs, thickness, device_dims, layer_type="substrate"):
-    """
-    Adds a slab using the lattice vectors as the dimensions. Use this 
-    for the substrate, background, and any coating layers. You must
-    specify the type in the function call. Designed so that lattice_vecs
-    and device_dims can be either a unit cell or the full device.
-
-    :param lattice_vecs: The lattice vectors defining the slab. In the 
-                         case of the substrate and coatings, these are
-                         the full length and width of the material
-    :type center: list
-
-    :param thickness: Thickness of the layer
-    :type center: float
-
-    :param device_dims: Dimensions of the existing device, in order to
-                        know how far to shift the slab. Depending on the
-                        slab to be inserted.
-    :type center: list
-
-    :param thickness: Type of the layer to be inserted. Determines which
-                      direction everything is shifted. Accepts arguments
-                      "coating", "background", and "substrate" (default)
-    :type center: string
-
-    :return: POV-Ray code describing the slab and the slab halfwidths
-    :rtype: tuple
-    """
-
-    halfwidth = [(0.5 * (lattice_vecs[0][0] + lattice_vecs[1][0])),
-            (0.5 * (lattice_vecs[0][1] + lattice_vecs[1][1]))]
-
-    # Curse povray's weird coordinate system, only the prism is affected by it 
-    # Must spawn at center, then rotate and translate later
-    end = [(-0.5 * thickness), (0.5 * thickness)]
-
-    # Defining slab vertices from lattice_vecs
-    # The shape is closed later (Povray requires that the first & last points match)
-    points = [ [0, 0],
-            [lattice_vecs[0][0], lattice_vecs[0][1]],
-            [(lattice_vecs[0][0] + lattice_vecs[1][0]), (lattice_vecs[0][1] + lattice_vecs[1][1])],
-            [lattice_vecs[1][0], lattice_vecs[1][1]] ]
-
-    # Write slab layer, adding teensy extra height to prevent weird artifacts
-    slab = "prism\n\t\t{ob:c}\n\t\t".format(ob=123) \
-            + "linear_sweep \n\t\tlinear_spline \n\t\t" \
-            + "{0}, {1}, {2} \n\t\t".format(end[0] * 1.0, end[1] * 1.000001, (len(points) + 1))
-
-    for i in range(len(points)):
-        points[i][0] -= halfwidth[0]
-        points[i][1] -= halfwidth[1]
-        slab += "<{0}, {1}>, ".format(points[i][0], points[i][1])
-    slab += "<{0}, {1}> \n\t\t".format(points[0][0], points[0][1])
-
-    # Determine translation vector
-    if layer_type == "coating":
-        x_translate = device_dims[0]
-        y_translate = device_dims[1]
-        z_translate = end[1] + device_dims[2]
-    elif layer_type == "background":
-        x_translate, y_translate = 0, 0
-        z_translate = end[0] - device_dims[2]
-    else:           # "substrate"
-        x_translate = device_dims[0]
-        y_translate = device_dims[1]
-        z_translate = end[0] - device_dims[2]
-
-    # Move slab to final location
-    slab += "rotate <90, 0, 0> \n\t\t"
-    slab += "translate <{0}, {1}, {2}> \n\t\t".format( \
-            x_translate, y_translate, z_translate)
-
-    return slab, halfwidth
-
-def update_device_dims(device_dims, new_x, new_y, new_z):
-    """
-    Tracks maximum unit device dimensions to aid in camera placement.
-    MAlso used to track coating thickness in the case of multiple
-    coatings.
-    
-    These dimensions will always be positive, even though the device 
-    is built with the top at z=0.
-
-    :param device_dims: Existing device dimensions
-    :type device_dims: list
-
-    :param new_x: x-dimensions of the newest layer
-    :type new_x: float
-
-    :param new_y: x-dimensions of the newest layer
-    :type new_y: float
-
-    :param new_z: Thickness of the newest layer
-    :type new_z: float
-
-    :return: Updated device dimensions
-    :rtype: list
-    """
-    device_dims[0] = max(new_x, device_dims[0])
-    device_dims[1] = max(new_y, device_dims[1])
-    device_dims[2] += new_z
-    return device_dims
-
-def guess_camera(device_dims, coating_dims=[0,0,0], camera_style="perspective", angle=0, center=[0, 0]):
+def guess_camera(device_dims, coating_dims=[0,0,0], 
+        camera_style="perspective", angle=0, center=[0, 0]):
     """ 
     Guesses the camera location if you have no idea what a good camera 
     position is. Can look at the device from the side (angle = 0) or at an 
@@ -509,4 +249,92 @@ def color_and_finish(dev_string, default_color_dict, material, use_default_color
     dev_string += "{cb:c}\n\n\t".format(cb=125)
 
     return dev_string
+
+
+def write_header_and_camera(device_dims, coating_dims = [0, 0, 0], 
+        camera_style = "perspective", camera_rotate = 60, 
+        camera_options = "", camera_loc = [], look_at = [], 
+        light_loc = [], up_dir = [0, 0, 1], right_dir = [0, 1, 0], 
+        sky = [0, 0, 1.33], bg_color = [1, 1, 1], shadowless=False):
+    """
+    Does exactly what the function name says. It creates a string 
+    containing the header and camera information.
+
+    :param device_dims: Device dimensions
+    :type device_dims: list
+
+    :return:
+    :rtype: string
+    """
+
+    # If any of the three options are missing, take a guess at them
+    if camera_loc == [] or look_at == [] or light_loc == []:
+        camera_loc, look_at, light_loc = \
+                guess_camera(device_dims, coating_dims=coating_dims, \
+                camera_style=camera_style, angle = camera_rotate, center=[0, 0])
+
+
+    #### ---- WRITE POV FILE ---- ####
+    header = "#version 3.7;\n"
+    header += "global_settings {ob:c} assumed_gamma 1.0 {cb:c}\n\n".format(ob=123, cb=125)
+    header += "background {ob:c} ".format(ob=123) \
+            + "color rgb <{0}, {1}, {2}> ".format(bg_color[0], bg_color[1], bg_color[2]) \
+            + "{cb:c}\n\n".format(cb=125) \
+            + "camera \n\t{ob:c}\n\t".format(ob=123) \
+            + "{0} {1} \n\t".format(camera_style, camera_options) \
+            + "location <{0}, {1}, {2}>\n\t".format(camera_loc[0], camera_loc[1], camera_loc[2]) \
+            + "look_at <{0}, {1}, {2}>\n\t".format(look_at[0], look_at[1], look_at[2]) \
+            + "up <{0}, {1}, {2}>\n\t".format(up_dir[0], up_dir[1], up_dir[2]) \
+            + "right <{0}, {1}, {2}>\n\t".format(right_dir[0], right_dir[1], right_dir[2]) \
+            + "sky <{0}, {1}, {2}>\n\t".format(sky[0], sky[1], sky[2]) \
+            + "{cb:c}\n\n".format(cb=125)
+
+    if shadowless:
+        header += "light_source \n\t{ob:c} \n\t".format(ob=123) \
+                + "<{0}, {1}, {2}> \n\t".format(light_loc[0], light_loc[1], light_loc[2]) \
+                + "color rgb <1.0,1.0,1.0> \n\t" \
+                + "shadowless \n\t" \
+                + "{cb:c}\n\n".format(cb=125)
+    else:
+        header += "light_source \n\t{ob:c} \n\t".format(ob=123) \
+                + "<{0}, {1}, {2}> \n\t".format(light_loc[0], light_loc[1], light_loc[2]) \
+                + "color rgb <1.0,1.0,1.0> \n\t" \
+                + "{cb:c}\n\n".format(cb=125)
+
+    return header
+
+
+def render_pov(pov_name, image_name, height, width,
+        display = False, transparent = True, antialias = True,
+        num_threads = 0, open_png = True, render = True):
+    
+    from os import system
+
+    command = "povray Input_File_Name={0} Output_File_Name={1} ".format(pov_name, image_name) \
+            + "+H{0} +W{1}".format(height, width)
+
+    if display:
+        command += " Display=on"
+    else:
+        command += " Display=off"
+
+    if transparent:
+        command += " +ua"
+
+    if antialias:
+        command += " +A"
+
+    if num_threads != 0:
+        command += " +WT{0}".format(num_threads)
+
+    if open_png == True:
+        command += " && eog {}".format(image_name)
+
+    if render == True:
+        system(command)
+
+    div = '----------------------------------------------------'
+    print("write_POV: Render with: \n{0}\n{1}\n{0}".format(div,command))
+
+    return
 

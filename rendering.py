@@ -2,9 +2,10 @@ def write_pov(device_dict, pov_name, image_name,
     height = 800, width = 800, 
     num_UC_x = 5, num_UC_y = 5, 
     camera_style = "perspective", 
-    camera_rotate = 60, ortho_angle = 30, 
-    camera_loc = [], look_at = [0,0,0], light_loc = [], 
-    up_dir = [0, 0, 1.33], right_dir = [0, 1, 0], sky = [0, 0, 1.33], 
+    camera_rotate = 60, 
+    ortho_angle = 30, 
+    camera_loc = [], look_at = [], light_loc = [], 
+    up_dir = [0, 0, 1], right_dir = [0, 1, 0], sky = [0, 0, 1.33], 
     shadowless = False, 
     coating_layers = [], 
     coating_color_dict = {"background":[1, 0, 0, 0, 0]}, 
@@ -12,6 +13,8 @@ def write_pov(device_dict, pov_name, image_name,
     bg_color = [1.0, 1.0, 1.0], transparent = True, antialias = True, 
     use_default_colors = True, custom_colors = [[0, 0.667, 0.667, 0, 0]], 
     use_finish = "", custom_finish = "", 
+    add_lines = True, 
+    line_thickness = 0.0025, line_color = [0, 0, 0, 0, 0],
     display = False, render = True, num_threads = 0, 
     open_png = False):
 
@@ -150,6 +153,17 @@ def write_pov(device_dict, pov_name, image_name,
                           for formatting (default "dull")
     :type custom_finish: str
 
+    :param add_lines: Adds lines to highlight shape edges (default False)
+    :type add_lines: bool
+
+    :param line_thickness: Half-thickness of lines used when add_lines = True
+                           (default 0.0025)
+    :type line_thickness: float
+
+    :param line_color: Color (as rgbft) of lines used when add_lines = True
+                       (default [0, 0, 0, 0, 0] (opaque black))
+    :type line_color: list
+
     :param display: Display render progress if ``render=True`` (default False)
     :type display: bool
 
@@ -168,9 +182,14 @@ def write_pov(device_dict, pov_name, image_name,
     from os import system
     from copy import deepcopy
     from util import deep_access
-    from util_pov import update_device_dims, guess_camera, color_and_finish
-    from util_pov import create_cylinder, create_ellipse, create_rectangle, create_polygon
-    from util_pov import add_slab
+    from util_shapes import create_cylinder, create_ellipse, create_rectangle, create_polygon
+    from util_shapes import add_slab, create_torus, add_accent_lines, update_device_dims
+    from util_shapes import write_circle_feature, write_ellipse_feature
+    from util_shapes import write_rectangle_feature, write_polygon_feature
+    from util_shapes import check_for_false_silos, write_silo_feature
+    from util_shapes import create_device_layer 
+#    from util_shapes import bg____stuff
+    from util_pov import guess_camera, color_and_finish, write_header_and_camera, render_pov
 
     fID = open(pov_name,'w')
 
@@ -183,8 +202,9 @@ def write_pov(device_dict, pov_name, image_name,
     number_of_layers = deep_access(device_dict, ['statepoint', 'num_layers'])
 
     # Set up custom color dictionary
-    # Assumes no more than THREE shapes per layer
     orig_custom_colors = deepcopy(custom_colors)
+
+    # Assumes no more than THREE shapes per layer
     if not use_default_colors:
         while len(custom_colors) < 3 * number_of_layers:
             for i in range(len(orig_custom_colors)):
@@ -192,7 +212,7 @@ def write_pov(device_dict, pov_name, image_name,
 
     # Counter for incrementing through colors
     c = 0
-    # Tracks dimensions of the unit cell
+    # Track dimensions of the unit cell
     device_dims = [0, 0, 0] 
     # Track coating layer thickness
     coating_dims = [0, 0, 0]
@@ -215,8 +235,8 @@ def write_pov(device_dict, pov_name, image_name,
 
     device += "#declare UnitCell = "
     device += "merge\n\t{ob:c}\n\t".format(ob=123)
-    ##device += "union\n\t{ob:c}\n\t".format(ob=123)
 
+    # Create all layers
     for i in range(number_of_layers):
 
         if deep_access(device_dict, ['statepoint', 'dev_layers', str(i)]).get('shapes') is not None:
@@ -254,192 +274,11 @@ def write_pov(device_dict, pov_name, image_name,
                 end[0] -= 0.00010
                 end[1] -= 0.00010
 
-            # Determine layer types
-            layer_type = []
-            has_silo = False
-            for ii in range(len(shapes)):
-                if deep_access(shapes, [str(ii), 'material']) in ["Vacuum", "vacuum"]:
-                    layer_type.append("Vacuum")
-                    has_silo = True
-                else:
-                    layer_type.append(deep_access(shapes, [str(ii), 'shape']))
-
-#            # Old code, has issues with "false" silos
-#            if has_silo == True:
-#                for iii in range(len(layer_type)-1):
-#                    if layer_type[iii] != "Vacuum" and layer_type[iii+1] == "Vacuum":
-#                        layer_type[iii] = "silo"
-
-            # Set type as silo, check for dimensions of zero that confuse povray
-            if has_silo == True:
-                for iii in range(len(layer_type)-1):
-                    if layer_type[iii] != "Vacuum" and layer_type[iii+1] == "Vacuum":
-                        layer_shape = deep_access(shapes, [str(iii+1), 'shape'])
-
-                        # Checks shapes containing radii for zero dimensions
-                        if layer_shape == "circle" and deep_access(shapes, [str(iii+1), 'shape_vars', 'radius']) == 0:
-                            print("Warning: Ignoring vacuum layer with dimensions equal to zero")
-
-                        # Checks shapes containing halfwidths for zero dimensions         
-                        elif layer_shape in ["ellipse", "rectangle"] and deep_access(shapes, [str(iii+1), 'shape_vars', 'halfwidths']) == [0, 0]:
-                            print("Warning: Ignoring vacuum layer with dimensions equal to zero")
-
-                        # Is actually a silo
-                        else:
-                            layer_type[iii] = "silo"
-
-            # Write device layers
-            for k in range(len(layer_type)):
-
-                if layer_type[k] == "circle":
-                    material = deep_access(shapes, [str(k), 'material'])
-                    center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
-                    radius = deep_access(shapes, [str(k), 'shape_vars', 'radius'])
-
-                    device += "// Circular pillar\n\t"
-                    device += create_cylinder(center, end, radius)
-
-                    device = color_and_finish(device, default_color_dict, material, \
-                            use_default_colors, custom_color = custom_colors[c], \
-                            use_finish = use_finish, custom_finish = custom_finish)
-
-                    if not use_default_colors:
-                        c += 1
-
-                    device_dims = update_device_dims(device_dims, radius, radius, 0)
-
-                elif layer_type[k] == "silo":
-                    material = deep_access(shapes, [str(k), 'material'])
-
-                    device += "// Silo\n\t"
-                    device += "difference \n\t\t{ob:c}\n\t\t".format(ob=123)
-
-                    # First shape
-                    # Only need feature variable for first shape, as it's the biggest
-                    if deep_access(shapes, [str(k), 'shape']) == "circle":
-                        center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
-                        radius = deep_access(shapes, [str(k), 'shape_vars', 'radius'])
-                        halfwidths = [radius, radius]           # to make things work
-                        device += create_cylinder(center, end, radius, for_silo=True)
-
-                    elif deep_access(shapes, [str(k), 'shape']) == "ellipse":
-                        material = deep_access(shapes, [str(k), 'material'])
-                        center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
-                        halfwidths = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
-                        angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
-                        device += create_ellipse(center, end, halfwidths, angle, for_silo=True)
-                        print("WARNING: this function has not been tested in silos!!")
-
-                    elif deep_access(shapes, [str(k), 'shape']) == "rectangle":
-                        material = deep_access(shapes, [str(k), 'material'])
-                        center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
-                        halfwidths = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
-                        angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
-                        device += create_rectangle(center, end, halfwidths, angle, for_silo=True)
-                        print("WARNING: this function has not been tested in silos!!")
-
-                    elif deep_access(shapes, [str(k), 'shape']) == "polygon":
-                        print("WARNING: create_polygon function has not been tested!!")
-
-                    else:
-                        print("ERROR: This shape is not supported!!")
-
-                    # Hole(s)
-                    # Required for the hole pass to through the ends of the first shape
-                    end2 = [(end[0] + 0.001), (end[1] - 0.001)]
-
-                    j = k + 1
-                    while j < len(shapes) and layer_type[j] == "Vacuum":
-                        if deep_access(shapes, [str(j), 'shape']) == "circle":
-                            center = deep_access(shapes, [str(j), 'shape_vars', 'center'])
-                            radius = deep_access(shapes, [str(j), 'shape_vars', 'radius'])
-                            device += create_cylinder(center, end2, radius, for_silo=True)
-                        elif deep_access(shapes, [str(j), 'shape']) == "ellipse":
-                            material = deep_access(shapes, [str(k), 'material'])
-                            center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
-                            halfwidths = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
-                            angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
-                            device += create_ellipse(center, end2, halfwidths, angle, for_silo=True)
-                            print("WARNING: this function has not been tested in silos!!")
-                        elif deep_access(shapes, [str(j), 'shape']) == "rectangle":
-                            material = deep_access(shapes, [str(k), 'material'])
-                            center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
-                            halfwidths = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
-                            angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
-                            device += create_rectangle(center, end2, halfwidths, angle, for_silo=True)
-                            print("WARNING: this function has not been tested in silos!!")
-                        elif deep_access(shapes, [str(j), 'shape']) == "polygon":
-                            print("WARNING: create_polygon function has not been tested!!")
-                        else:
-                            print("ERROR: This shape is not supported!!")
-                        j += 1
-
-                    device = color_and_finish(device, default_color_dict, material, \
-                            use_default_colors, custom_color = custom_colors[c], \
-                            use_finish = use_finish, custom_finish = custom_finish)
-
-                    if not use_default_colors:
-                        c += 1
-
-                    device_dims = update_device_dims(device_dims, halfwidths[0], halfwidths[1], 0)
-
-                elif layer_type[k] == "ellipse":
-                    material = deep_access(shapes, [str(k), 'material'])
-                    center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
-                    halfwidths = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
-                    angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
-
-                    device += "// Ellipse\n\t"
-                    device += create_ellipse(center, end, halfwidths, angle)
-
-                    device = color_and_finish(device, default_color_dict, material, \
-                            use_default_colors, custom_color = custom_colors[c], \
-                            use_finish = use_finish, custom_finish = custom_finish)
-
-                    if not use_default_colors:
-                        c += 1
-
-                    device_dims = update_device_dims(device_dims, halfwidths[0], halfwidths[1], 0)
-
-                elif layer_type[k] == "rectangle":
-                    material = deep_access(shapes, [str(k), 'material'])
-                    center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
-                    halfwidths = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
-                    angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
-
-                    device += "// Rectangle\n\t"
-                    device += create_rectangle(center, end, halfwidths, angle)
-
-                    device = color_and_finish(device, default_color_dict, material, \
-                            use_default_colors, custom_color = custom_colors[c], \
-                            use_finish = use_finish, custom_finish = custom_finish)
-
-                    if not use_default_colors:
-                        c += 1
-
-                    device_dims = update_device_dims(device_dims, halfwidths[0], halfwidths[1], 0)
-
-                elif layer_type[k] == "polygon":
-                    print("WARNING: create_polygon function has not been tested!!")
-                    print("The substrate is an example of a working povray prism!")
-                    material = deep_access(shapes, [str(k), 'material'])
-                    center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
-                    angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
-
-                    device += "// Polygon\n\t"
-                    #points = 
-                    #halfwidths = 
-
-
-                elif layer_type[k] == "Vacuum":
-                    k = k
-
-                else:
-                    print("\nWARNING: Invalid or unsupported layer specified.\n")
-
-            # End of device layer (update thickness and close union
-            device_dims = update_device_dims(device_dims, 0, 0, thickness)
-            device += "{cb:c}\n\t".format(cb=125)
+            # Create all features within a layer
+            layer, c, device_dims = create_device_layer(shapes, device_dims, 
+                    end, thickness, default_color_dict, use_default_colors, 
+                    custom_colors, c, use_finish, custom_finish, add_lines)
+            device += layer
 
     # End unit cell merge
     device += "{cb:c}\n\n".format(cb=125)
@@ -458,12 +297,15 @@ def write_pov(device_dict, pov_name, image_name,
 
     for i in range(num_UC_x):
         for j in range(num_UC_y):
-            device += "object {ob:c} UnitCell translate <{0}, {1}, {2}> {cb:c}\n\t".format( \
-                    ((i - adj_x) * lattice_vecs[0][0] - (j - adj_y) * lattice_vecs[1][0]), \
-                    ((j - adj_y) * lattice_vecs[1][1] - (i - adj_x) * lattice_vecs[0][1]), \
+            device += "object {ob:c} UnitCell translate <{0}, {1}, {2}> {cb:c}\n\t".format( 
+                    ((i - adj_x) * lattice_vecs[0][0] - (j - adj_y) * lattice_vecs[1][0]), 
+                    ((j - adj_y) * lattice_vecs[1][1] - (i - adj_x) * lattice_vecs[0][1]), 
                     0, ob=123, cb=125)
 
     #### ---- COATING AND SUBSTRATE ---- ####
+
+    # NOTE: substrate and coatings use prism instead of box because
+    # lattice isn't necessarily rectangular
 
     # temp_vecs are the full dimensions of the material
     temp_vecs = deepcopy(lattice_vecs)
@@ -488,12 +330,12 @@ def write_pov(device_dict, pov_name, image_name,
     if coating_layers != []:
         for j in range(len(coating_layers)):
             device += "// Coating layer {0}\n\t".format(j + 1)
-            coating, halfwidth = add_slab(temp_vecs, coating_layers[j][1], \
+            coating, halfwidth = add_slab(temp_vecs, coating_layers[j][1], 
                     coating_dims, layer_type="coating")
-            coating = color_and_finish(coating, default_color_dict, \
-                    background, use_default_colors = False, \
-                    custom_color=coating_color_dict[coating_layers[j][0]], \
-                    ior=coating_ior_dict[coating_layers[j][0]], \
+            coating = color_and_finish(coating, default_color_dict, 
+                    background, use_default_colors = False, 
+                    custom_color=coating_color_dict[coating_layers[j][0]], 
+                    ior=coating_ior_dict[coating_layers[j][0]], 
                     use_finish = "translucent")
             device += coating
 
@@ -510,7 +352,7 @@ def write_pov(device_dict, pov_name, image_name,
     substrate, halfwidth = add_slab(temp_vecs, thickness_sub, substrate_dims, layer_type="substrate")
     device += substrate
 
-    device = color_and_finish(device, default_color_dict, material, \
+    device = color_and_finish(device, default_color_dict, material, 
             use_default_colors = True, use_finish = "dull")
 
     halfwidth = [(0.5 * (lattice_vecs[0][0] + lattice_vecs[1][0])), 
@@ -519,13 +361,14 @@ def write_pov(device_dict, pov_name, image_name,
     device_dims = update_device_dims(device_dims, 0, 0, thickness_sub)
 
     #### ---- HEADER AND CAMERA ---- ####
-
+    
     # Cap how far out the camera will go when replicating unit cell
-    device_dims = update_device_dims(device_dims, \
-            (min(5, num_UC_x) * device_dims[0]), \
-            (min(5, num_UC_y) * device_dims[1]), \
+    device_dims = update_device_dims(device_dims, 
+            (min(5, num_UC_x) * device_dims[0]), 
+            (min(5, num_UC_y) * device_dims[1]), 
             device_dims[2])
 
+    # Handles camera style and related option(s)
     if camera_style == "":
         camera_style = "perspective"
 
@@ -534,66 +377,27 @@ def write_pov(device_dict, pov_name, image_name,
     else:
         camera_options = ""
 
-    if camera_loc == [] or look_at == [] or light_loc == []:
-        camera_loc, look_at, light_loc = \
-                guess_camera(device_dims, coating_dims=coating_dims, \
-                camera_style=camera_style, angle = camera_rotate, center=[0, 0])
+    # If camera and light source locations specified but the look_at point is 
+    # missing, set look_at point and leave other values alone
+    # If either camera or light locations are missing, all values are filled in
+    # by the guess_camera function (called within write_header_and_camera)
+    if look_at == []:
+        if camera_loc != [] and light_loc != []:
+            look_at = [center[0], center[1], (-0.66 * device_dims[2] + 0.50 * coating_dims[2])]
 
-    #### ---- WRITE POV FILE ---- ####
-    header = "#version 3.7;\n" 
-    header += "global_settings {ob:c} assumed_gamma 1.0 {cb:c}\n\n".format(ob=123, cb=125) 
-    header += "background {ob:c} ".format(ob=123) \
-            + "color rgb <{0}, {1}, {2}> ".format(bg_color[0], bg_color[1], bg_color[2]) \
-            + "{cb:c}\n\n".format(cb=125) \
-            + "camera \n\t{ob:c}\n\t".format(ob=123) \
-            + "{0} {1} \n\t".format(camera_style, camera_options) \
-            + "location <{0}, {1}, {2}>\n\t".format(camera_loc[0], camera_loc[1], camera_loc[2]) \
-            + "look_at <{0}, {1}, {2}>\n\t".format(look_at[0], look_at[1], look_at[2]) \
-            + "up <{0}, {1}, {2}>\n\t".format(up_dir[0], up_dir[1], up_dir[2]) \
-            + "right <{0}, {1}, {2}>\n\t".format(right_dir[0], right_dir[1], right_dir[2]) \
-            + "sky <{0}, {1}, {2}>\n\t".format(sky[0], sky[1], sky[2]) \
-            + "{cb:c}\n\n".format(cb=125)
-
-    if shadowless:
-        header += "light_source \n\t{ob:c} \n\t".format(ob=123) \
-                + "<{0}, {1}, {2}> \n\t".format(light_loc[0], light_loc[1], light_loc[2]) \
-                + "color rgb <1.0,1.0,1.0> \n\t" \
-                + "shadowless \n\t" \
-                + "{cb:c}\n\n".format(cb=125)
-    else:
-        header += "light_source \n\t{ob:c} \n\t".format(ob=123) \
-                + "<{0}, {1}, {2}> \n\t".format(light_loc[0], light_loc[1], light_loc[2]) \
-                + "color rgb <1.0,1.0,1.0> \n\t" \
-                + "{cb:c}\n\n".format(cb=125)
+    # Create header and camera
+    header = write_header_and_camera(device_dims = device_dims, 
+            coating_dims = coating_dims, camera_style = camera_style, 
+            camera_rotate = camera_rotate, camera_options = camera_options, 
+            camera_loc = camera_loc, look_at = look_at, light_loc = light_loc, 
+            up_dir = up_dir, right_dir = right_dir, sky = sky, 
+            bg_color = bg_color, shadowless = shadowless)
 
     fID.write(header + device)
     fID.close()
 
     #### ---- RENDER ---- ####
-    command = "povray Input_File_Name={0} Output_File_Name={1} ".format(pov_name, image_name) \
-            + "+H{0} +W{1}".format(height, width)
-
-    if display:
-        command += " Display=on"
-    else:
-        command += " Display=off"
-
-    if transparent:
-        command += " +ua" 
-
-    if antialias:
-        command += " +A"
-
-    if num_threads != 0:
-        command += " +WT{0}".format(num_threads)
-
-    if open_png == True:
-        command += " && eog {}".format(image_name)
-
-    if render == True:
-        system(command)
-
-    div = '----------------------------------------------------'
-    print("write_POV: Render with: \n{0}\n{1}\n{0}".format(div,command))
+    render_pov(pov_name, image_name, height, width, display,
+        transparent, antialias, num_threads, open_png, render)
 
     return
