@@ -1,5 +1,5 @@
 def guess_camera(device_dims, coating_dims=[0,0,0], 
-        camera_style="perspective", angle=0, center=[0, 0]):
+        camera_style="perspective", angle=0, center=[0, 0], isosurface=False):
     """ 
     Guesses the camera location if you have no idea what a good camera 
     position is. Can look at the device from the side (angle = 0) or at an 
@@ -13,15 +13,22 @@ def guess_camera(device_dims, coating_dims=[0,0,0],
     :param coating_dims: Dimensions of the coating layer(s)
     :type device_dims: list
 
-    :param camera_style: The desired camera style, currently accepts perspective and orthographic
+    :param camera_style: The desired camera style, currently accepts 
+                         perspective and orthographic
     :type camera_sylte: string
 
     :param angle: Rotates the camera around the z-axis (in degrees)
                   0 will look down the x-axis at the side of the device
     :type angle: float
     
-    :param center: The center of the device
+    :param center: The center of the device, gets overwritten if isosurface=True
     :type center: list
+
+    :param isosurface: Adjusts camera paramters if you rendering an isosurface. 
+                       Required because the origin is in a different location 
+                       with isosurfaces. Will overwrite any values assigned to 
+                       the center variable.
+    :type isosurface: boolean
 
     :return: Tuple containing the camera position, camera look at location, and the light position
     :rtype: tuple
@@ -47,16 +54,34 @@ def guess_camera(device_dims, coating_dims=[0,0,0],
 
     # Offset for x,y-dimensions
     camera_offset = x_offset * (max(device_dims) + 0.8 * max(coating_dims))
-
-    camera_position[0] = (camera_offset + device_dims[0]) * cos(angle)
-    camera_position[1] = (camera_offset + device_dims[0]) * sin(angle)
-    camera_position[2] = z_scale * (device_dims[2] + 0.5 * coating_dims[2])
-    camera_look_at = [center[0], center[1], (-0.66 * device_dims[2] + 0.50 * coating_dims[2])]
-
     light_offset = camera_offset * 1.25 
+
+    # Need to scale z-axis settings differently when rendering isosurfaces
+    # Related to default origin position:
+    # - Pure device render: top at z = 0, centered at x=y=0 by default
+    # - Isosurface (and optional unit cell) has bottom at z = 0, origin at corner
+    if isosurface == False:
+        z_lookat = -0.66
+    else:
+        z_lookat = 0.25
+        device_dims[2] *= 1.75
+        center = [0.5 * device_dims[0], 0.5 * device_dims[1]]
+        camera_offset *= 0.75
+
+    # Guess things
+    camera_position[0] = (camera_offset + device_dims[0] + center[0]) * cos(angle)
+    camera_position[1] = (camera_offset + device_dims[0] + center[1]) * sin(angle)
+    camera_position[2] = z_scale * (device_dims[2] + 0.5 * coating_dims[2])
+
+    camera_look_at = [center[0], center[1], (z_lookat * device_dims[2] + 0.50 * coating_dims[2])]
+
     light_position[0] = (device_dims[0] + light_offset) * cos(angle - 12 * deg_to_rads)
-    light_position[1] = (device_dims[1] + light_offset/1.0) * sin(angle - 12 * deg_to_rads)
+    light_position[1] = (device_dims[1] + light_offset) * sin(angle - 12 * deg_to_rads)
     light_position[2] = camera_position[2] + light_offset/3.0
+
+    if isosurface == True:
+        light_position[0] = max(light_position[0], light_position[1])
+        light_position[1] = light_position[0]
 
     #print("Write_POV estimated camera parameters:")
     #print("camera_position : " , camera_position)
@@ -255,7 +280,8 @@ def write_header_and_camera(device_dims, coating_dims = [0, 0, 0],
         camera_style = "perspective", camera_rotate = 60, 
         camera_options = "", camera_loc = [], look_at = [], 
         light_loc = [], up_dir = [0, 0, 1], right_dir = [0, 1, 0], 
-        sky = [0, 0, 1.33], bg_color = [1, 1, 1], shadowless=False):
+        sky = [0, 0, 1.33], bg_color = [1, 1, 1], shadowless=False, 
+        isosurface = False):
     """
     Does exactly what the function name says. It creates a string 
     containing the header and camera information.
@@ -271,7 +297,8 @@ def write_header_and_camera(device_dims, coating_dims = [0, 0, 0],
     if camera_loc == [] or look_at == [] or light_loc == []:
         camera_loc, look_at, light_loc = \
                 guess_camera(device_dims, coating_dims=coating_dims, \
-                camera_style=camera_style, angle = camera_rotate, center=[0, 0])
+                camera_style=camera_style, angle = camera_rotate, center=[0, 0],
+                isosurface = isosurface)
 
 
     #### ---- WRITE POV FILE ---- ####

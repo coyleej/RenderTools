@@ -11,13 +11,21 @@ Example scripts
 
 * call_gif_POV.py : example for rendering a gif containing a series of devices from a MANTIS json file, calls rendering.py
 
+* call_isosurface.py : example for rendering a set of isosurfaces with a single unit cell
+
 * povray_slurm.sh : example slurm batch file
 
 Functional bits
 
-* rendering.py : the POV-Ray function writes a .pov file and renders a .png by default (will eventually a blender function, too)
+* rendering.py : the POV-Ray function writes a .pov file and renders a .png by default
 
-* util.py : the function to extract data from the MANTIS json
+* util.py : contains functions to extract data from the MANTIS json
 
-* util_pov.py : utility functions required by the code in rendering.py
+* util_pov.py : contains all camera, header, and rendering functions
+
+* util_shapes.py : functions describing/building a device
+
+* util_field.py : functions for extracting the field information from a numpy array
+
+* util_shapes.py : contains all isosurface-specific functions
 
