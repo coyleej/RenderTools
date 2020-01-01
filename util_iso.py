@@ -40,6 +40,18 @@ def create_mesh2(field, cutoffs, colormap = "viridis", transmit = 0.4, cmap_limi
     format and tracks the maximum dimensions of the isosurfaces.
     Outputs the mesh2 string and the overall dimensions.
 
+    Minimum required input is
+    * the field of interest (field)
+    * the isovalues of interest (cutoffs)
+
+
+    #### NOTE ####
+    Currently working on allowing user more control over the isosurface
+    color cutoffs. Currently the colormap extremes are always set to
+    the minimum and maximum values of the field.
+    #### NOTE ####
+
+
     :param field: Field values to turn into isosurface
     :type field: numpy array
 
@@ -57,9 +69,8 @@ def create_mesh2(field, cutoffs, colormap = "viridis", transmit = 0.4, cmap_limi
                         (set as ["a", "b"] by default)
     :type cmap_limits: list
 
-    :return: mesh2 as a string 
+    :return: mesh2 object as a string 
     :rtype: string
-
     """
     import numpy as np
     from numpy.fft import fftn

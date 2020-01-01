@@ -56,9 +56,9 @@ name = "test_3x3"
 pov_name = name + ".pov"
 image_name = name + ".png"
 
-height = 2000
+height = 1000
 width = height
-num_UC = 3
+num_UC = 4
 
 # Open device dictionary
 with signac.Collection.open(json_file, compresslevel=1) as d_index:
@@ -90,11 +90,11 @@ custom_colors = [
 
 # Starts at bottom coating layer and builds up (micrometers)
 # [material_name, thickness]
-#extra_coatings = [
-#        ["coating1", 0.308],
-#        ["coating3", 0.130]]
+extra_coatings = [ 
+        ["coating1", 0.308],
+        ["coating3", 0.130]]
 
-extra_coatings = [ ]
+#extra_coatings = [ 
 #        ["coating1", 0.01824],
 #        ["coating2", 0.04277],
 #        ["coating1", 0.02885],
@@ -117,52 +117,48 @@ bg_coating_color_dict = {
         "coating2":[0.1, 1.0, 0.1, 0, 0],
         "coating3":[0.1, 0.1, 1.0, 0, 0]}
 
-camera_style = "perspective"
-camera_rotate = 60
-ortho_angle = 30
-camera_loc = []
-look_at = []
-light_loc = []
-up_dir = [0, 0, 1]
-right_dir = [0, 1, 0]
-sky = [0, 0, 1.33]
-bg_color = [1, 1, 1]
-shadowless = False
 
-device, device_dims, coating_dims = write_pov(device_dict, pov_name, image_name, 
-        height = height, width = height, 
-        num_UC_x = num_UC, num_UC_y = num_UC, 
-        camera_style = camera_style,
-        camera_rotate = camera_rotate, 
-        camera_loc = camera_loc, look_at = look_at, light_loc = light_loc,
-        shadowless = False,
+#### Render things ####
+
+# Create device string and output the device dimensions
+device, device_dims, coating_dims = write_pov(device_dict, 
+        num_UC_x = num_UC, 
+        num_UC_y = num_UC, 
         coating_layers = extra_coatings, 
         coating_color_dict = bg_coating_color_dict,
         coating_ior_dict = bg_coating_ior_dict,
-        use_default_colors = False, custom_colors = custom_colors, 
-        use_finish = "billiard", custom_finish = extra_finish, 
-        add_lines = True,
-        display = False, render = True , num_threads = 3, 
-        open_png = True)
+        use_default_colors = False, 
+        custom_colors = custom_colors, 
+        use_finish = "billiard", 
+        custom_finish = extra_finish, 
+        add_lines = True)
 
-print(device)
-
-camera_options = ""
-
-header = write_header_and_camera(device_dims = device_dims,
-        coating_dims = coating_dims, camera_style = camera_style,
-        camera_rotate = camera_rotate, camera_options = camera_options,
-        camera_loc = camera_loc, look_at = look_at, light_loc = light_loc,
-        up_dir = up_dir, right_dir = right_dir, sky = sky,
-        bg_color = bg_color, shadowless = shadowless)
-
-print(header)
+# Generate a header with the camera and lighting information
+header = write_header_and_camera(device_dims,
+        coating_dims = coating_dims, 
+        camera_style = "perspective",
+        ortho_angle = 30, 
+        camera_rotate = 60, 
+        camera_options = "",
+        camera_loc = [], 
+        look_at = [], 
+        light_loc = [],
+        up_dir = [0, 0, 1], 
+        right_dir = [0, 1, 0], 
+        sky = [0, 0, 1.33],
+        bg_color = [1, 1, 1], 
+        shadowless = False)
 
 fID = open(pov_name,'w')
 fID.write(header + device)
 fID.close()
 
+# Render the device
 render_pov(pov_name, image_name, height, width, 
-        display = True, transparent = True, antialias = True, 
-        num_threads = 3, open_png = True, render = True)
+        display = True, 
+        transparent = True, 
+        antialias = True, 
+        num_threads = 3, 
+        open_png = True, 
+        render = True)
 

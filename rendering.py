@@ -1,115 +1,44 @@
-def write_pov(device_dict, pov_name, image_name, 
-    height = 800, width = 800, 
+def write_pov(device_dict, 
     num_UC_x = 5, num_UC_y = 5, 
-    camera_style = "perspective", 
-    camera_rotate = 60, 
-    ortho_angle = 30, 
-    camera_loc = [], look_at = [], light_loc = [], 
-    up_dir = [0, 0, 1], right_dir = [0, 1, 0], sky = [0, 0, 1.33], 
-    shadowless = False, 
     coating_layers = [], 
     coating_color_dict = {"background":[1, 0, 0, 0, 0]}, 
     coating_ior_dict = {"background":1.0}, 
-    bg_color = [1.0, 1.0, 1.0], transparent = True, antialias = True, 
     use_default_colors = True, custom_colors = [[0, 0.667, 0.667, 0, 0]], 
     use_finish = "", custom_finish = "", 
     add_lines = True, 
     line_thickness = 0.0025, line_color = [0, 0, 0, 0, 0],
-    display = False, render = True, num_threads = 0, 
-    open_png = False):
+    display = False, render = True, num_threads = 0): #, 
 
     """ 
-    Generates a .pov and optionally render an image from a json file.
-    device_dict, pov_name, and image_name are the only required 
-    values.
-    * device_dict is the dictionary entry from the json file
-    * pov_name is the name for the generated .pov file
-    * image_name is the name for the image that will be rendered
+    ### SHOULD GET RENAMED, AS IT NO LONGER GENERATES A .POV FILE!!! ####
 
-    By default, the code will generate a .pov file, render an image
-    and open it post-render with eog.
+    Generates a string containing the device information.
 
-    The code will always include (in STDOUT) the command to render
-    the image with the selected render options, even if it is only
-    creating a .pov file (not rendering).
+    The required input information is
+    * the dictionary entry from the json file (device_dict)
 
     The color and finish of the device can be specified by the user 
     via the ``color_and_finish`` function. The substrate will always 
     be a dull, dark grey; this cannot be modified by the user.
 
-    The following camera settings generate the same dimensions, 
-    but the second one has more whitespace at top and bottom: 
-    height=800, width=4/3.0*height, up_dir=[0,0,1], right_dir=[0,1,0], sky=up_dir
-    height=800, width=height, up_dir=[0,0,1.333], right_dir=[0,1,0], sky=up_dir
-
-    Some additional assumptions:
+    Some assumptions:
     * All shapes describing holes in silos are the vacuum layers 
       immediately following the shape layer
     * xy-plane is centered at 0
 
+    Returns a tuple containing
+    * a string containing the device information (device)
+    * the device dimensions (device_dims)
+    # the coating dimensions (coating_dims)
+
     :param device_dict: Dictionary entry from a json file
     :type device_dict: dict
-
-    :param pov_name: Name of the .pov file
-    :type pov_name: str
-
-    :param image_name: Name of the rendered image
-    :type image_name: str
-
-    :param height: Image height (default 800)
-    :type height: int
-
-    :param width, Image width (default 800)
-    :type width: int
 
     :param num_UC_x: Number of unit cells in the y direction (default 5)
     :type num_UC_x: int 
 
     :param num_UC_y: Number of unit cells in the y direction (default 5)
     :type num_UC_y: int 
-
-    :param camera_style: Camera style; currently supported options are 
-                         "perspective" (default), and "orthographic"; 
-                         other POV-Ray camera styles may be tried if 
-                         desired, but there is no promise that they will 
-                         work as expected
-    :type camera_style: str
-
-    :param camera_rotate: Rotates the camera location about the z-axis 
-                          (degrees, default 60) 
-    :type camera_rotate: int 
-
-    :param ortho_angle: Width of the field of view for the orthographic 
-                        camera (degrees, default 30) 
-    :type ortho_angle: int
-
-    :param camera_loc: Location of the camera, can be guessed with 
-                       ``guess_camera`` (default empty) 
-    :type camera_loc: list 
-
-    :param look_at: The point the camera looks at (default [0,0,0]) 
-    :type look_at: list
-
-    :param light_loc: The location of the light source, can be guessed with 
-                      ``guess_camera`` (default empty)
-    :type light_loc: list
-
-    :param shadowless: Use a shadowless light source (default False)
-    :type shadowless: bool
-
-    :param up_dir: Tells POV-Ray the relative height of the screen; 
-                   controls the aspect ratio together with ``right-dir`` 
-                   (default [0, 0, 1.33]) 
-    :type up_dir: list
-
-    :param right_dir: Tells POV-Ray the relative width of the screen; 
-                       controls the aspect ratio together with ``up_dir`` 
-                       (default [0, 1, 0]) 
-    :type right_dir: list
-
-    :param sky: Sets the camera orientation, e.g. can hold the camera 
-                upside down (default [0, 0, 1.33])
-    :type sky: list
 
     :param coating_layers: List containing material and thickness of each
                            layer, starting with the bottom layer and
@@ -126,12 +55,6 @@ def write_pov(device_dict, pov_name, image_name,
 
     :param bg_color: Sets the background color (default [1.0, 1.0, 1.0])
     :type bg_color: list
-
-    :param transparent: Sets background transparency (default True)
-    :type transparent: bool
-
-    :param antialias: Turns antialiasing on (default True)
-    :type antialias: bool
 
     :param use_default_colors: Determine color selection: True will set 
                                the color based on the material specified 
@@ -164,19 +87,11 @@ def write_pov(device_dict, pov_name, image_name,
                        (default [0, 0, 0, 0, 0] (opaque black))
     :type line_color: list
 
-    :param display: Display render progress if ``render=True`` (default False)
-    :type display: bool
-
     :param render: Tells POV-Ray to render the image (default True)
     :type render: bool
 
-    :param num_threads: Tells POV-Ray how many threads to use when rendering,
-                        specifying 0 will use all available (default 0)
-    :type render: int
-
-    :param open_png: Opens rendered image with eog if the rendering is
-                     successful (default False)
-    :type open_png: bool
+    :return: device, device_dims, coating_dims
+    :rtype: tuple
     """
 
     from os import system
@@ -210,10 +125,13 @@ def write_pov(device_dict, pov_name, image_name,
 
     # Counter for incrementing through colors
     c = 0
+
     # Track dimensions of the unit cell
     device_dims = [0, 0, 0] 
+
     # Track coating layer thickness
     coating_dims = [0, 0, 0]
+
     # Store device
     device = ""
 
@@ -358,17 +276,11 @@ def write_pov(device_dict, pov_name, image_name,
 
     device_dims = update_device_dims(device_dims, 0, 0, thickness_sub)
 
-    #### ---- HEADER AND CAMERA ---- ####
     
     # Cap how far out the camera will go when replicating unit cell
     device_dims = update_device_dims(device_dims, 
             (min(5, num_UC_x) * device_dims[0]), 
             (min(5, num_UC_y) * device_dims[1]), 
             device_dims[2])
-
-
-
-
-
 
     return device, device_dims, coating_dims

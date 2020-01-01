@@ -287,13 +287,83 @@ def write_header_and_camera(device_dims, coating_dims = [0, 0, 0],
     Does exactly what the function name says. It creates a string 
     containing the header and camera information.
 
+    The minimum required input is:
+    * the device dimensions (device_dims)
+
+    Due to how the camera information is guessed (if camera and light
+    information is not completely specified, you must be aware of the 
+    following:
+    * if you have a coating, you must specify the coating dimensions
+    * if you have an isosurface, you must specify isosurface = True
+
+    The following camera settings generate the same dimensions, 
+    but the second one has more whitespace at top and bottom: 
+    height=800, width=4/3.0*height, up_dir=[0,0,1], right_dir=[0,1,0], sky=up_dir
+    height=800, width=height, up_dir=[0,0,1.333], right_dir=[0,1,0], sky=up_dir
+
+    Assumes that the device xy-plane is centered at 0.
+
     :param device_dims: Device dimensions
     :type device_dims: list
 
-    camera_options should include the ortho angle for orthographic renderings
-    could also be used to include other options if necessary
+    :param coating_dims: Coating dimensions, defaults to [0, 0, 0]
+    :type coating_dims: list
 
-    :return:
+    :param camera_style: Camera style; currently supported options are 
+                         "perspective" (default), and "orthographic"; 
+                         other POV-Ray camera styles may be tried if 
+                         desired, but there is no promise that they will 
+                         work as expected
+    :type camera_style: str
+
+    :param camera_rotate: Rotates the camera location about the z-axis 
+                          (degrees, default 60) 
+    :type camera_rotate: int 
+
+    :param ortho_angle: Width of the field of view for the orthographic 
+                        camera (degrees, default 30) 
+    :type ortho_angle: int
+
+    :param camera_loc: Location of the camera, can be guessed with 
+                       ``guess_camera`` (default empty) 
+    :type camera_loc: list 
+
+    :param look_at: The point the camera looks at (default [0,0,0]) 
+    :type look_at: list
+
+    :param light_loc: The location of the light source, can be guessed with 
+                      ``guess_camera`` (default empty)
+    :type light_loc: list
+
+    :param shadowless: Use a shadowless light source (default False)
+    :type shadowless: bool
+
+    :param up_dir: Tells POV-Ray the relative height of the screen; 
+                   controls the aspect ratio together with ``right-dir`` 
+                   (default [0, 0, 1.33]) 
+    :type up_dir: list
+
+    :param right_dir: Tells POV-Ray the relative width of the screen; 
+                       controls the aspect ratio together with ``up_dir`` 
+                       (default [0, 1, 0]) 
+    :type right_dir: list
+
+    :param sky: Sets the camera orientation, e.g. can hold the camera 
+                upside down (default [0, 0, 1.33])
+    :type sky: list
+
+    :param isosurface: Set this to True if rendering isosurfaces to account
+                       for the differing origins between S4 RCWA simulations
+                       and isosurface creation (default False)
+    :type isosurface: bool
+
+    :param camera_options: Included in the function call, but not really
+                           used in the rest of the script. It could include 
+                           the ortho angle for orthographic renderings, or
+                           options for other camera styles if necessary
+    :type camera_options: string
+
+    :return: Header information with camera, light, and background settings
     :rtype: string
     """
 
@@ -321,7 +391,6 @@ def write_header_and_camera(device_dims, coating_dims = [0, 0, 0],
         camera_options = "angle {0}".format(str(ortho_angle))
     else:
         camera_options = ""
-
 
     #### ---- WRITE POV FILE ---- ####
     header = "#version 3.7;\n"
@@ -356,6 +425,53 @@ def write_header_and_camera(device_dims, coating_dims = [0, 0, 0],
 def render_pov(pov_name, image_name, height, width,
         display = False, transparent = True, antialias = True,
         num_threads = 0, open_png = True, render = True):
+    """
+    Feeds the pov file into POV-Ray. By default it will render an image, 
+    open the image post-render with eog, and print the render command 
+    to the terminal.
+
+    The minimum required input is:
+    * the name for the generated .pov file (pov_name)
+    * the name for the image that will be rendered (image_name)
+    * image height
+    * image width
+
+    The code will always include (in STDOUT) the command to render
+    the image with the selected render options, even if it is only
+    creating a .pov file (not rendering).
+
+    :param pov_name: Name of the .pov file
+    :type pov_name: str
+
+    :param image_name: Name of the rendered image
+    :type image_name: str
+
+    :param height: Image height (default 800)
+    :type height: int
+
+    :param width, Image width (default 800)
+    :type width: int
+
+    :param display: Display render progress if ``render=True`` (default False)
+    :type display: bool
+
+    :param transparent: Sets background transparency (default True)
+    :type transparent: bool
+
+    :param antialias: Turns antialiasing on (default True)
+    :type antialias: bool
+
+    :param num_threads: Tells POV-Ray how many threads to use when rendering,
+                        specifying 0 will use all available (default 0)
+    :type num_threads: int
+
+    :param open_png: Opens rendered image with eog if the rendering is
+                     successful (default False)
+    :type open_png: bool
+
+    :param render: Tells POV-Ray to render the image (default True)
+    :type render: bool
+    """
     
     from os import system
 
@@ -377,7 +493,7 @@ def render_pov(pov_name, image_name, height, width,
         command += " +WT{0}".format(num_threads)
 
     if open_png == True:
-        command += " && eog {}".format(image_name)
+        command += " && eog {0}".format(image_name)
 
     if render == True:
         system(command)
