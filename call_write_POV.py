@@ -1,5 +1,6 @@
 import signac
 from rendering import write_pov
+from util_pov import guess_camera, color_and_finish, write_header_and_camera, render_pov
 from os import system
 
 # RECTANGLE
@@ -56,6 +57,7 @@ pov_name = name + ".pov"
 image_name = name + ".png"
 
 height = 2000
+width = height
 num_UC = 3
 
 # Open device dictionary
@@ -115,37 +117,25 @@ bg_coating_color_dict = {
         "coating2":[0.1, 1.0, 0.1, 0, 0],
         "coating3":[0.1, 0.1, 1.0, 0, 0]}
 
-# Optica square lattice setting (side view)s
-#        camera_loc = [2.0, 3.6, 3.4444],
-#        camera_style = "perspective", 
-#        look_at = [], 
-#        light_loc = [3.5, 4.5, 3.75],
-#        shadowless = False,
-# Optica hex lattice settings (side view)
-#        camera_style = "perspective", 
-#        camera_loc = [1.75, 3.2, 3.4444],
-#        look_at = [], 
-#        light_loc = [3.5, 3.9, 3.75],
-#        shadowless = False,
-# Optica top down view
-#        camera_loc = [0, 0, 3.4444],
-#        camera_style = "orthographic", 
-#        ortho_angle = 30,
-#        look_at = [], 
-#        light_loc = [3.5, 4.5, 3.75],
-#        shadowless = False,
+camera_style = "perspective"
+camera_rotate = 60
+ortho_angle = 30
+camera_loc = []
+look_at = []
+light_loc = []
+up_dir = [0, 0, 1]
+right_dir = [0, 1, 0]
+sky = [0, 0, 1.33]
+bg_color = [1, 1, 1]
+shadowless = False
 
-
-write_pov(device_dict, pov_name, image_name, 
+device, device_dims, coating_dims = write_pov(device_dict, pov_name, image_name, 
         height = height, width = height, 
         num_UC_x = num_UC, num_UC_y = num_UC, 
-        camera_style = "perspective", 
-        camera_rotate = 60, 
-        ortho_angle = 30, 
-        camera_loc = [],
+        camera_style = camera_style,
+        camera_rotate = camera_rotate, 
+        camera_loc = camera_loc, look_at = look_at, light_loc = light_loc,
         shadowless = False,
-        look_at = [], 
-        light_loc = [],
         coating_layers = extra_coatings, 
         coating_color_dict = bg_coating_color_dict,
         coating_ior_dict = bg_coating_ior_dict,
@@ -154,3 +144,25 @@ write_pov(device_dict, pov_name, image_name,
         add_lines = True,
         display = False, render = True , num_threads = 3, 
         open_png = True)
+
+print(device)
+
+camera_options = ""
+
+header = write_header_and_camera(device_dims = device_dims,
+        coating_dims = coating_dims, camera_style = camera_style,
+        camera_rotate = camera_rotate, camera_options = camera_options,
+        camera_loc = camera_loc, look_at = look_at, light_loc = light_loc,
+        up_dir = up_dir, right_dir = right_dir, sky = sky,
+        bg_color = bg_color, shadowless = shadowless)
+
+print(header)
+
+fID = open(pov_name,'w')
+fID.write(header + device)
+fID.close()
+
+render_pov(pov_name, image_name, height, width, 
+        display = True, transparent = True, antialias = True, 
+        num_threads = 3, open_png = True, render = True)
+

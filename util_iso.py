@@ -93,11 +93,12 @@ def create_mesh2(field, cutoffs, colormap = "viridis", transmit = 0.4, cmap_limi
     if isinstance(cmap_limits[1], str):
         cmap_limits[1] = max(cutoffs)
 
-    # Never trust users, espeically not yourself
 
 
 
-    print(cmap_limits, cmap_diff)
+    print(cmap_limits)
+
+
 
 
     # Create string to store mesh information

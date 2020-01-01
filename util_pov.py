@@ -278,7 +278,8 @@ def color_and_finish(dev_string, default_color_dict, material, use_default_color
 
 def write_header_and_camera(device_dims, coating_dims = [0, 0, 0], 
         camera_style = "perspective", camera_rotate = 60, 
-        camera_options = "", camera_loc = [], look_at = [], 
+        camera_options = "", ortho_angle = 60, 
+        camera_loc = [], look_at = [], 
         light_loc = [], up_dir = [0, 0, 1], right_dir = [0, 1, 0], 
         sky = [0, 0, 1.33], bg_color = [1, 1, 1], shadowless=False, 
         isosurface = False):
@@ -289,16 +290,37 @@ def write_header_and_camera(device_dims, coating_dims = [0, 0, 0],
     :param device_dims: Device dimensions
     :type device_dims: list
 
+    camera_options should include the ortho angle for orthographic renderings
+    could also be used to include other options if necessary
+
     :return:
     :rtype: string
     """
 
-    # If any of the three options are missing, take a guess at them
+    # If camera and light source locations specified but the look_at point is
+    # missing, set look_at point and leave other values alone
+    # If either camera or light locations are missing, all values are filled in
+    # by the guess_camera function (called within write_header_and_camera)
+    if look_at == []:
+        if camera_loc != [] and light_loc != []:
+            # Assumes the device is centered at x=y=0
+            look_at = [0, 0, (-0.66 * device_dims[2] + 0.50 * coating_dims[2])]
+
+    # If any of the three options are still missing, take a guess at them
     if camera_loc == [] or look_at == [] or light_loc == []:
         camera_loc, look_at, light_loc = \
                 guess_camera(device_dims, coating_dims=coating_dims, \
                 camera_style=camera_style, angle = camera_rotate, center=[0, 0],
                 isosurface = isosurface)
+
+    # Handles camera style and related option(s)
+    if camera_style == "":
+        camera_style = "perspective"
+
+    if camera_style == "orthographic":
+        camera_options = "angle {0}".format(str(ortho_angle))
+    else:
+        camera_options = ""
 
 
     #### ---- WRITE POV FILE ---- ####

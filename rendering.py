@@ -191,8 +191,6 @@ def write_pov(device_dict, pov_name, image_name,
 #    from util_shapes import bg____stuff
     from util_pov import guess_camera, color_and_finish, write_header_and_camera, render_pov
 
-    fID = open(pov_name,'w')
-
     default_color_dict = {
             "subst": [0.15, 0.15, 0.15, 0, 0], 
             "Si":[0.2, 0.2, 0.2, 0, 0], 
@@ -368,36 +366,9 @@ def write_pov(device_dict, pov_name, image_name,
             (min(5, num_UC_y) * device_dims[1]), 
             device_dims[2])
 
-    # Handles camera style and related option(s)
-    if camera_style == "":
-        camera_style = "perspective"
 
-    if camera_style == "orthographic":
-        camera_options = "angle {0}".format(str(ortho_angle))
-    else:
-        camera_options = ""
 
-    # If camera and light source locations specified but the look_at point is 
-    # missing, set look_at point and leave other values alone
-    # If either camera or light locations are missing, all values are filled in
-    # by the guess_camera function (called within write_header_and_camera)
-    if look_at == []:
-        if camera_loc != [] and light_loc != []:
-            look_at = [center[0], center[1], (-0.66 * device_dims[2] + 0.50 * coating_dims[2])]
 
-    # Create header and camera
-    header = write_header_and_camera(device_dims = device_dims, 
-            coating_dims = coating_dims, camera_style = camera_style, 
-            camera_rotate = camera_rotate, camera_options = camera_options, 
-            camera_loc = camera_loc, look_at = look_at, light_loc = light_loc, 
-            up_dir = up_dir, right_dir = right_dir, sky = sky, 
-            bg_color = bg_color, shadowless = shadowless)
 
-    fID.write(header + device)
-    fID.close()
 
-    #### ---- RENDER ---- ####
-    render_pov(pov_name, image_name, height, width, display,
-        transparent, antialias, num_threads, open_png, render)
-
-    return
+    return device, device_dims, coating_dims
