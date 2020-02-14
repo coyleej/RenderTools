@@ -104,6 +104,9 @@ def calc_field_mag(field):
     """
     Calculate the magnitude of a given field
     """
+
+    from util import deep_access
+
     # First, we multiply the field by its complex conjugate
     # this will effectively square the values of each of the components
     # of the vector
@@ -111,6 +114,7 @@ def calc_field_mag(field):
     # conjugate will guarantee a real result, it is still of type complex
     # Third, we sum the vector components (x*x + y*y + z*z)
     # Finally, we take the square root
+
     return np.sqrt(np.sum(np.real(np.multiply(field,
                                               np.conj(field))), axis=-1))
 

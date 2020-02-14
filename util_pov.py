@@ -281,7 +281,7 @@ def write_header_and_camera(device_dims, coating_dims = [0, 0, 0],
         camera_options = "", ortho_angle = 60, 
         camera_loc = [], look_at = [], 
         light_loc = [], up_dir = [0, 0, 1], right_dir = [0, 1, 0], 
-        sky = [0, 0, 1.33], bg_color = [1, 1, 1], shadowless=False, 
+        sky = [0, 0, 1.33], bg_color = [], shadowless=False, 
         isosurface = False):
     """
     Does exactly what the function name says. It creates a string 
@@ -335,9 +335,6 @@ def write_header_and_camera(device_dims, coating_dims = [0, 0, 0],
                       ``guess_camera`` (default empty)
     :type light_loc: list
 
-    :param shadowless: Use a shadowless light source (default False)
-    :type shadowless: bool
-
     :param up_dir: Tells POV-Ray the relative height of the screen; 
                    controls the aspect ratio together with ``right-dir`` 
                    (default [0, 0, 1.33]) 
@@ -351,6 +348,14 @@ def write_header_and_camera(device_dims, coating_dims = [0, 0, 0],
     :param sky: Sets the camera orientation, e.g. can hold the camera 
                 upside down (default [0, 0, 1.33])
     :type sky: list
+
+    :param bg_color: Background color as [r, g, b], where all elements are
+                     values between 0 and 1; defaults to [] (no background)
+                     to enable transparency. 
+    :type bg_color: list
+
+    :param shadowless: Use a shadowless light source (default False)
+    :type shadowless: bool
 
     :param isosurface: Set this to True if rendering isosurfaces to account
                        for the differing origins between S4 RCWA simulations
@@ -376,7 +381,7 @@ def write_header_and_camera(device_dims, coating_dims = [0, 0, 0],
             # Assumes the device is centered at x=y=0
             look_at = [0, 0, (-0.66 * device_dims[2] + 0.50 * coating_dims[2])]
 
-    # If any of the three options are still missing, take a guess at them
+    # If any of the three options are still missing, take a guess at everything
     if camera_loc == [] or look_at == [] or light_loc == []:
         camera_loc, look_at, light_loc = \
                 guess_camera(device_dims, coating_dims=coating_dims, \
@@ -392,13 +397,16 @@ def write_header_and_camera(device_dims, coating_dims = [0, 0, 0],
     else:
         camera_options = ""
 
-    #### ---- WRITE POV FILE ---- ####
+    # Create POV header
     header = "#version 3.7;\n"
     header += "global_settings {ob:c} assumed_gamma 1.0 {cb:c}\n\n".format(ob=123, cb=125)
-    header += "background {ob:c} ".format(ob=123) \
-            + "color rgb <{0}, {1}, {2}> ".format(bg_color[0], bg_color[1], bg_color[2]) \
-            + "{cb:c}\n\n".format(cb=125) \
-            + "camera \n\t{ob:c}\n\t".format(ob=123) \
+    
+    if bg_color != []:
+        header += "background {ob:c} ".format(ob=123) \
+                + "color rgb <{0}, {1}, {2}> ".format(bg_color[0], bg_color[1], bg_color[2]) \
+                + "{cb:c}\n\n".format(cb=125) \
+
+    header += "camera \n\t{ob:c}\n\t".format(ob=123) \
             + "{0} {1} \n\t".format(camera_style, camera_options) \
             + "location <{0}, {1}, {2}>\n\t".format(camera_loc[0], camera_loc[1], camera_loc[2]) \
             + "look_at <{0}, {1}, {2}>\n\t".format(look_at[0], look_at[1], look_at[2]) \
@@ -407,17 +415,14 @@ def write_header_and_camera(device_dims, coating_dims = [0, 0, 0],
             + "sky <{0}, {1}, {2}>\n\t".format(sky[0], sky[1], sky[2]) \
             + "{cb:c}\n\n".format(cb=125)
 
+    header += "light_source \n\t{ob:c} \n\t".format(ob=123) \
+            + "<{0}, {1}, {2}> \n\t".format(light_loc[0], light_loc[1], light_loc[2]) \
+            + "color rgb <1.0,1.0,1.0> \n\t"
+
     if shadowless:
-        header += "light_source \n\t{ob:c} \n\t".format(ob=123) \
-                + "<{0}, {1}, {2}> \n\t".format(light_loc[0], light_loc[1], light_loc[2]) \
-                + "color rgb <1.0,1.0,1.0> \n\t" \
-                + "shadowless \n\t" \
-                + "{cb:c}\n\n".format(cb=125)
-    else:
-        header += "light_source \n\t{ob:c} \n\t".format(ob=123) \
-                + "<{0}, {1}, {2}> \n\t".format(light_loc[0], light_loc[1], light_loc[2]) \
-                + "color rgb <1.0,1.0,1.0> \n\t" \
-                + "{cb:c}\n\n".format(cb=125)
+        header += "shadowless \n\t"
+
+    header += "{cb:c}\n\n".format(cb=125)
 
     return header
 
@@ -497,6 +502,13 @@ def render_pov(pov_name, image_name, height, width,
 
     if render == True:
         system(command)
+
+    div = '----------------------------------------------------'
+
+    print("For additional rendering options, please see POV-Ray\'s documentation,")
+    print("particularly the file output and tracing options:")
+    print("http://www.povray.org/documentation/view/3.6.0/219/")
+    print("http://www.povray.org/documentation/view/3.6.0/223/")
 
     div = '----------------------------------------------------'
     print("write_POV: Render with: \n{0}\n{1}\n{0}".format(div,command))

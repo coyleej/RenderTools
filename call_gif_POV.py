@@ -1,5 +1,7 @@
 import signac
-from rendering import write_pov
+#from rendering import write_pov     # moved to util_shapes, create_device
+from util_shapes import create_device
+from util_pov import color_and_finish, write_header_and_camera, render_pov
 from os import system
 
 ##### File info #####
@@ -9,7 +11,7 @@ gif_name = "devices.gif"
 
 ##### Render settings #####
 height = 200
-# width = height #in function call
+width = height
 
 # All have the same camera information
 camera_loc = [3.5, 6.5, 4.0]
@@ -19,7 +21,7 @@ light_loc = [5.9, 6.6, 5.7]
 
 device_list = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K"]
 
-num_UC = [20, 18, 16, 14, 12, 10, 9, 8, 24, 20, 20]
+num_UC = [2, 8, 6, 4, 2, 1, 9, 8, 4, 2, 2]
 
 custom_colors = [
         [0.12156862745098, 0.466666666666667, 0.705882352941176], 
@@ -67,20 +69,59 @@ for i in range(len(device_list)):
             + " metallic \n\t\t\t" \
             + "{cb:c}\n\t\t".format(cb=125)
 
-    # The brackets around custom_colors[i] are required here because 
-    # write_pov expects [[], [], ...], but we're only passing in one color.
-    write_pov(device_dict, pov_name, image_name, 
-            height = height, width = height, 
-            num_UC_x = num_UC[i], num_UC_y = num_UC[i], 
-            camera_style = "perspective", 
-            camera_rotate = 60, ortho_angle = 30, 
-            camera_loc = camera_loc,
-            look_at = camera_look_at, 
-            light_loc = light_loc, 
-            use_default_colors = False, custom_colors = [custom_colors[i]], 
-            use_finish = "dull", custom_finish = extra_finish, 
-            display = False, render = True , num_threads = 4, 
-            open_png = False)
+#    # The brackets around custom_colors[i] are required here because 
+#    # write_pov expects [[], [], ...], but we're only passing in one color.
+#    write_pov(device_dict, pov_name, image_name, 
+#            height = height, width = height, 
+#            num_UC_x = num_UC[i], num_UC_y = num_UC[i], 
+#            camera_style = "perspective", 
+#            camera_rotate = 60, ortho_angle = 30, 
+#            camera_loc = camera_loc,
+#            look_at = camera_look_at, 
+#            light_loc = light_loc, 
+#            use_default_colors = False, custom_colors = [custom_colors[i]], 
+#            use_finish = "dull", custom_finish = extra_finish, 
+#            display = False, render = True , num_threads = 4, 
+#            open_png = False)
+
+
+    # Create device string and output the device dimensions
+#    device, device_dims, coating_dims = write_pov(device_dict,
+    device, device_dims, coating_dims = create_device(device_dict,
+            num_UC_x = num_UC[i],
+            num_UC_y = num_UC[i],
+            use_default_colors = False,
+            custom_colors = custom_colors,
+            use_finish = "dull",
+            custom_finish = extra_finish,
+            add_lines = True)
+
+    # Generate a header with the camera and lighting information
+    header = write_header_and_camera(device_dims,
+            coating_dims = coating_dims,
+            camera_style = "perspective",
+            ortho_angle = 30,
+            camera_rotate = 60,
+            camera_options = "",
+            camera_loc = [],
+            look_at = [],
+            light_loc = [],
+            bg_color = [1, 1, 1],
+            shadowless = False)
+
+    fID = open(pov_name,'w')
+    fID.write(header + device)
+    fID.close()
+
+    # Render the device
+    render_pov(pov_name, image_name, height, width,
+            display = False,
+            transparent = True,
+            antialias = True,
+            num_threads = 3,
+            open_png = True,
+            render = True)
+
 
 ##### Gif #####
 command = "cd {0:s}; convert ".format(output_dir)

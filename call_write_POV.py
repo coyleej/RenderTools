@@ -1,6 +1,7 @@
 import signac
-from rendering import write_pov
-from util_pov import guess_camera, color_and_finish, write_header_and_camera, render_pov
+#from rendering import write_pov     # moved to util_shapes, create_device
+from util_shapes import create_device
+from util_pov import color_and_finish, write_header_and_camera, render_pov
 from os import system
 
 # RECTANGLE
@@ -90,9 +91,9 @@ custom_colors = [
 
 # Starts at bottom coating layer and builds up (micrometers)
 # [material_name, thickness]
-extra_coatings = [ 
-        ["coating1", 0.308],
-        ["coating3", 0.130]]
+extra_coatings = [  ]
+#        ["coating1", 0.308],
+#        ["coating3", 0.130]]
 
 #extra_coatings = [ 
 #        ["coating1", 0.01824],
@@ -121,7 +122,8 @@ bg_coating_color_dict = {
 #### Render things ####
 
 # Create device string and output the device dimensions
-device, device_dims, coating_dims = write_pov(device_dict, 
+#device, device_dims, coating_dims = write_pov(device_dict, 
+device, device_dims, coating_dims = create_device(device_dict, 
         num_UC_x = num_UC, 
         num_UC_y = num_UC, 
         coating_layers = extra_coatings, 
@@ -146,7 +148,7 @@ header = write_header_and_camera(device_dims,
         up_dir = [0, 0, 1], 
         right_dir = [0, 1, 0], 
         sky = [0, 0, 1.33],
-        bg_color = [1, 1, 1], 
+        bg_color = [], 
         shadowless = False)
 
 fID = open(pov_name,'w')

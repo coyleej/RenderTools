@@ -73,7 +73,6 @@ def create_mesh2(field, cutoffs, colormap = "viridis", transmit = 0.4, cmap_limi
     :rtype: string
     """
     import numpy as np
-    from numpy.fft import fftn
     from skimage.measure import marching_cubes_lewiner
     from os import system
     import pylab
