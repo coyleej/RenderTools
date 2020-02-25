@@ -1,36 +1,15 @@
-def write_mesh2_params(parameter, values, values_per_line=2):
-    """
-    Takes parameter data and converts it into a string that POV-Ray 
-    understands.
-
-    :param parameter: One of the mesh2 specifications, e.g.
-                      "vertex_vectors", "normal_vectors", "face_indices"
-    :type parameter: string
-
-    :param values: The values for the parameter variable, each element
-                   must be a list with three values
-    :type values: list
-
-    :param values_per_line: Only place this many values on a line for 
-                            readability, defaults to 2
-    :type values_per_line: int
-
-    :return: Parameter data in POV-Ray mesh2 format
-    :rtype: string
-    """
-    param_string = "\n\t{0} {ob:c}".format(parameter, ob=123)
-    param_string += "\n\t\t{0}".format(len(values))
-
-    for j in range(len(values)):
-        if j % 2 == 0:
-            param_string += "\n\t\t"
-        param_string += "<{0:.5f}, {1:.5f}, {2:.5f}>".format(
-            values[j][0], values[j][1], values[j][2])
-        if j != (len(values) - 1):
-            param_string += ", "
-    param_string += "\n\t\t{cb:c}".format(cb=125)
-
-    return(param_string)
+########## SUMMARY OF CONTENTS ########## 
+# All functions specific to isosurface creation/rendering
+# Functions to manipulate data into the proper form are 
+# located in the util_field file.
+#
+# A quick summary of these functions:
+# (the function for generating the isosurface unit cell 
+# is isosurface_unit_cell, which is located in util_shapes)
+# - create_mesh2 calls write_mesh2_params
+# - write_mesh2_params never directly called by the user
+# - slice_isosurface is used to cut chunks out of the isosurface
+#     and/or the device unit cell
 
 
 def create_mesh2(field, cutoffs, colormap = "viridis", transmit = 0.4, cmap_limits = ["a","b"]):
@@ -174,6 +153,41 @@ def create_mesh2(field, cutoffs, colormap = "viridis", transmit = 0.4, cmap_limi
         mesh += "\n{cb:c}".format(cb=125)
 
     return mesh
+
+
+def write_mesh2_params(parameter, values, values_per_line=2):
+    """
+    Takes parameter data and converts it into a string that POV-Ray 
+    understands.
+
+    :param parameter: One of the mesh2 specifications, e.g.
+                      "vertex_vectors", "normal_vectors", "face_indices"
+    :type parameter: string
+
+    :param values: The values for the parameter variable, each element
+                   must be a list with three values
+    :type values: list
+
+    :param values_per_line: Only place this many values on a line for 
+                            readability, defaults to 2
+    :type values_per_line: int
+
+    :return: Parameter data in POV-Ray mesh2 format
+    :rtype: string
+    """
+    param_string = "\n\t{0} {ob:c}".format(parameter, ob=123)
+    param_string += "\n\t\t{0}".format(len(values))
+
+    for j in range(len(values)):
+        if j % 2 == 0:
+            param_string += "\n\t\t"
+        param_string += "<{0:.5f}, {1:.5f}, {2:.5f}>".format(
+            values[j][0], values[j][1], values[j][2])
+        if j != (len(values) - 1):
+            param_string += ", "
+    param_string += "\n\t\t{cb:c}".format(cb=125)
+
+    return(param_string)
 
 
 def slice_isosurface(mesh, corner1, corner2, subtract_box = False):

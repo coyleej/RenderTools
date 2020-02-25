@@ -1,3 +1,29 @@
+########## SUMMARY OF CONTENTS ##########
+# All functions here pertain to creating features (shapes),
+# device layers, and accent lines.
+#
+# A quick summary of these functions:
+# (only create_device and isosurface_unit cell called directly by user)
+# - create_* creates a string describing the shape in the function name
+#     device features: cylinder, ellipse, rectangle, polygon
+#     accent line shapes: torus, sphere [, cylinder]
+# - add_slab is used to create coating layers and the substrate
+# - add_accent_lines adds accent lines to features, chooses lines based
+#     on feature geometry
+# - update_device_dims tracks the device size; device size is used to
+#     place layers, determine camera location, and add isosurface
+# - write_*_feature create strings describing the feature and calls
+#     functions including create_*, add_accent_lines, and others
+# - check_for_false_silos omits anything with dimension = 0
+# - create_device_layer creates a single layer of a device using 
+#     write_*_feature and others
+# - create_device loops through all layers using create_device_layer, 
+#     replicates the unit cell as requested, and adds the substrate and
+#     and all coatings, 
+# - isosurface_unit_cell generates a single unit cell using many of the
+#     functions in this file, but with isosurface-specific modifications
+#     including a different origin and scaling the device
+
 def create_cylinder(center, end, radius, for_silo=False):
     """ 
     Creates povray instructions for a cylindrical pillar 
@@ -101,7 +127,7 @@ def create_rectangle(center, end, halfwidths, angle=0, for_silo=False):
     return rect_string
 
 
-def create_polygon(center, end, halfwidths, points, device_dims, angle=0, for_silo=False):
+def create_polygon(center, end, vertices, angle=0, for_silo=False):
     """ 
     Creates povray instructions for a polygon/prism
 
@@ -116,8 +142,8 @@ def create_polygon(center, end, halfwidths, points, device_dims, angle=0, for_si
     :param num_points: The number of vertices
     :type num_points: list
 
-    :param points: List of x-,y-coordinates in counter-clockwise order
-    :type points: list
+    :param vertices: List of x-,y-coordinates in counter-clockwise order
+    :type vertices: list
 
     :param angle: Rotation angle (deg) of the polygon about its center
     :type angle: float
@@ -135,7 +161,7 @@ def create_polygon(center, end, halfwidths, points, device_dims, angle=0, for_si
 
     # Povray requires that you close the shape
     # The first and last point must be the same
-    num_points = len(points) + 1
+    num_points = len(vertices) + 1
 
     poly_string = "prism\n\t\t{ob:c}\n\t\t".format(ob=123) \
             + "linear_sweep \n\t\tlinear_spline \n\t\t" \
@@ -144,13 +170,13 @@ def create_polygon(center, end, halfwidths, points, device_dims, angle=0, for_si
     # Must spawn prism at origin, then rotate and translate into position
     # Thanks, povray's weird coordinate system
     for i in range(len(num_points)):
-        points[i][0] -= (center[0] + halfwidth[0])
-        points[i][1] -= (center[1] + halfwidth[1])
-        poly_string += "<{0}, {1}>, ".format(points[i][0], points[i][1])
-    poly_string += "<{0}, {1}> \n\t\t".format(points[0][0], points[0][1])
+        vertices[i][0] -= (center[0])
+        vertices[i][1] -= (center[1])
+        poly_string += "<{0}, {1}>, ".format(vertices[i][0], vertices[i][1])
+    poly_string += "<{0}, {1}> \n\t\t".format(vertices[0][0], vertices[0][1])
 
-    device += "rotate <90, 0, 0> \n\t\t"
-    device += "translate <{0}, {1}, {2}> \n\t\t".format( \
+    poly_string += "rotate <90, 0, 0> \n\t\t"
+    poly_string += "translate <{0}, {1}, {2}> \n\t\t".format( \
             (-1.0 * center[0]), (-1.0 * center[1]), (end[0] - device_dims[2]))
 
     if angle != 0:      # in degrees
@@ -171,20 +197,21 @@ def add_slab(lattice_vecs, thickness, device_dims, layer_type="substrate"):
     :param lattice_vecs: The lattice vectors defining the slab. In the 
                          case of the substrate and coatings, these are
                          the full length and width of the material
-    :type center: list
+    :type lattice_vecs: list
 
     :param thickness: Thickness of the layer
-    :type center: float
+    :type thickness: float
 
     :param device_dims: Dimensions of the existing device, in order to
                         know how far to shift the slab. Depending on the
                         slab to be inserted.
-    :type center: list
+    :type device_dims: list
 
-    :param thickness: Type of the layer to be inserted. Determines which
-                      direction everything is shifted. Accepts arguments
-                      "coating", "background", and "substrate" (default)
-    :type center: string
+    :param layer_type: Type of the layer to be inserted. Determines which
+                       direction everything is shifted. Accepts arguments
+                       "coating", "background", "isosurface", and 
+                       "substrate" (default)
+    :type layer_type: string
 
     :return: POV-Ray code describing the slab and the slab halfwidths
     :rtype: tuple
@@ -223,7 +250,11 @@ def add_slab(lattice_vecs, thickness, device_dims, layer_type="substrate"):
     elif layer_type == "background":
         x_translate, y_translate = 0, 0
         z_translate = end[0] - device_dims[2]
-    else:           # "substrate"
+    elif layer_type == "isosurface":
+        x_translate = 0.5 * device_dims[0]
+        y_translate = 0.5 * device_dims[1]
+        z_translate = -0.5 * thickness
+    else:            # "substrate"
         x_translate = device_dims[0]
         y_translate = device_dims[1]
         z_translate = end[0] - device_dims[2]
@@ -474,6 +505,11 @@ def write_circle_feature(shapes, k, device_dims, end, default_color_dict,
         use_default_colors, custom_colors, c, use_finish, custom_finish,
         add_lines = False):
 
+    """
+    Creates a circle feature within a layer, complete with color and
+    finish specifications.
+    """
+
     from util import deep_access
     from util_pov import color_and_finish
 
@@ -507,12 +543,18 @@ def write_ellipse_feature(shapes, k, device_dims, end, default_color_dict,
         use_default_colors, custom_colors, c, use_finish, custom_finish,
         add_lines = False):
 
+    """
+    Creates a ellipse feature within a layer, complete with color and
+    finish specifications.
+    """
+
     from util import deep_access
     from util_pov import color_and_finish
 
     material = deep_access(shapes, [str(k), 'material'])
     center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
-    halfwidths = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
+    hw = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
+    halfwidths = [hw.get("x"), hw.get("y")]
     angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
 
     ellipse = "// Ellipse\n\t" \
@@ -541,12 +583,18 @@ def write_rectangle_feature(shapes, k, device_dims, end, default_color_dict,
         use_default_colors, custom_colors, c, use_finish, custom_finish,
         add_lines = False):
 
+    """
+    Creates a rectangle feature within a layer, complete with color and
+    finish specifications.
+    """
+
     from util import deep_access
     from util_pov import color_and_finish
 
     material = deep_access(shapes, [str(k), 'material'])
     center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
-    halfwidths = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
+    hw = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
+    halfwidths = [hw.get("x"), hw.get("y")]
     angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
 
     rectangle = "// Rectangle\n\t" \
@@ -575,6 +623,13 @@ def write_polygon_feature(shapes, k, device_dims, end, default_color_dict,
         use_default_colors, custom_colors, c, use_finish, custom_finish,
         add_lines = False):
 
+    """
+    Creates a polygon feature within a layer, complete with color and
+    finish specifications. The polygon vertices must be specified in 
+    counter-clockwise order for S4. (POV-Ray doesn't care about the 
+    direction as long as the shape is closed.)
+    """
+
     from util import deep_access
     from util_pov import color_and_finish
 
@@ -583,15 +638,53 @@ def write_polygon_feature(shapes, k, device_dims, end, default_color_dict,
     material = deep_access(shapes, [str(k), 'material'])
     center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
     angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
+    points = deep_access(shapes, [str(k), 'shape_vars', 'vertices'])
 
-    polygon = "// Polygon\n\t"
-    #points = 
-    #halfwidths = 
+    # Grab the vertices out of the points dictionary
+    # Must be formatted as a list (not a numpy array), to
+    # match what create_polygon expects.
+    # Don't worry about closing the array here because
+    # create_polygon does that for you automatically
+    # Eric and his never-ending dictionaries...
+    vertices = []
+    for k in range(len(points)):
+        vertex = [deep_access(vert_dict2, [f"{k}", "x"]), 
+                deep_access(vert_dict2, [f"{k}", "y"])]
+        vertices.append(vertex)
+
+    # Not sure why Kerry is tracking polygon halfwidths in her stuff.
+    # Halfwidths only matter for rectangles and ellipses.
+    # (It was here only as a copy-pasta error on my part.)
+    # The shape should be fully specifed by the center and vertices.
+
+    polygon = "// Polygon\n\t" \
+            + create_polygon(center, end, vertices, angle=0)
+
+    polygon = color_and_finish(rectangle, default_color_dict, material, \
+            use_default_colors, custom_color = custom_colors[c], \
+            use_finish = use_finish, custom_finish = custom_finish)
+
+    # Increments through custom color list
+    if not use_default_colors:
+        c += 1
+
+    # Add lines edges of the feature
+    if add_lines == True:
+        print("\nWARNING: add_accent_lines does not support polygons at this time!\n")
+
+    device_dims = update_device_dims(device_dims, halfwidths[0], halfwidths[1], 0)
 
     return polygon, c, device_dims
 
 
 def check_for_false_silos(shapes, layer_type):
+    """
+    'False silos' are instances where the layer to be subtracted has a
+    dimension of zero. POV-Ray fill crash if given a 'false silo'.
+    This function keeps POV-Ray happy by resetting all 'false silos'
+    to the fully solid shape.
+    """
+
     from util import deep_access
 
     for iii in range(len(layer_type)-1):
@@ -617,6 +710,11 @@ def write_silo_feature(shapes, k, layer_type, device_dims, end, default_color_di
         use_default_colors, custom_colors, c, use_finish, custom_finish,
         add_lines = False):
 
+    """
+    Creates a silo. Should be able to handle any possible combination 
+    of features, including multiple holes in a single feature.
+    """
+
     from util import deep_access
     from util_pov import color_and_finish
     from copy import deepcopy
@@ -641,7 +739,8 @@ def write_silo_feature(shapes, k, layer_type, device_dims, end, default_color_di
     elif deep_access(shapes, [str(k), 'shape']) == "ellipse":
         material = deep_access(shapes, [str(k), 'material'])
         center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
-        halfwidths = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
+        hw = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
+        halfwidths = [hw.get("x"), hw.get("y")]
         angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
         device += create_ellipse(center, end, halfwidths, angle, for_silo=True)
         print("WARNING: this function has not been tested in silos!!")
@@ -653,7 +752,8 @@ def write_silo_feature(shapes, k, layer_type, device_dims, end, default_color_di
     elif deep_access(shapes, [str(k), 'shape']) == "rectangle":
         material = deep_access(shapes, [str(k), 'material'])
         center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
-        halfwidths = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
+        hw = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
+        halfwidths = [hw.get("x"), hw.get("y")]
         angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
         device += create_rectangle(center, end, halfwidths, angle, for_silo=True)
         print("WARNING: this function has not been tested in silos!!")
@@ -664,6 +764,13 @@ def write_silo_feature(shapes, k, layer_type, device_dims, end, default_color_di
 
     elif deep_access(shapes, [str(k), 'shape']) == "polygon":
         print("WARNING: create_polygon function has not been tested!!")
+
+        material = deep_access(shapes, [str(k), 'material'])
+        center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
+        hw = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
+        halfwidths = [hw.get("x"), hw.get("y")]
+        angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
+        device += create_polygon(center, end, vertices, angle, for_silo=True)
 
         # Set up for add_lines=True, even if not actually used
         shape = "polygon"
@@ -697,7 +804,8 @@ def write_silo_feature(shapes, k, layer_type, device_dims, end, default_color_di
         elif deep_access(shapes, [str(j), 'shape']) == "ellipse":
             material = deep_access(shapes, [str(k), 'material'])
             center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
-            halfwidths = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
+            hw = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
+            halfwidths = [hw.get("x"), hw.get("y")]
             angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
             device += create_ellipse(center, end2, halfwidths, angle, for_silo=True)
             print("WARNING: this function has not been tested in silos!!")
@@ -709,7 +817,8 @@ def write_silo_feature(shapes, k, layer_type, device_dims, end, default_color_di
         elif deep_access(shapes, [str(j), 'shape']) == "rectangle":
             material = deep_access(shapes, [str(k), 'material'])
             center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
-            halfwidths = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
+            hw = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
+            halfwidths = [hw.get("x"), hw.get("y")]
             angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
             device += create_rectangle(center, end2, halfwidths, angle, for_silo=True)
             print("WARNING: this function has not been tested in silos!!")
@@ -756,6 +865,12 @@ def write_silo_feature(shapes, k, layer_type, device_dims, end, default_color_di
 def create_device_layer(shapes, device_dims, end, thickness, 
         default_color_dict, use_default_colors, custom_colors, 
         c, use_finish, custom_finish, add_lines):
+
+    """
+    Generates a single layer of a device. Called by create_device,
+    which creates the full unit cell. Adds a color and finish to each
+    feature as it's created.
+    """
 
     from util import deep_access
 
@@ -846,8 +961,6 @@ def create_device(device_dict,
     display = False, render = True, num_threads = 0): #, 
 
     """ 
-    ### SHOULD GET RENAMED, AS IT NO LONGER GENERATES A .POV FILE!!! ####
-
     Generates a string containing the device information.
 
     The required input information is
@@ -865,7 +978,7 @@ def create_device(device_dict,
     Returns a tuple containing
     * a string containing the device information (device)
     * the device dimensions (device_dims)
-    # the coating dimensions (coating_dims)
+    * the coating dimensions (coating_dims)
 
     :param device_dict: Dictionary entry from a json file
     :type device_dict: dict
@@ -933,8 +1046,8 @@ def create_device(device_dict,
     from os import system
     from copy import deepcopy
     from util import deep_access
-    from util_shapes import add_slab, update_device_dims
-    from util_shapes import create_device_layer 
+#    from util_shapes import add_slab, update_device_dims
+#    from util_shapes import create_device_layer 
 #    from util_shapes import bg____stuff
     from util_pov import guess_camera, color_and_finish, write_header_and_camera, render_pov
 
@@ -1126,6 +1239,49 @@ def isosurface_unit_cell(mesh,
         corner1 = [0,0,0], 
         corner2 = [0,0,0], 
         subtract_box = True):
+
+    """ 
+    Generates a string containing the device information.
+
+    The required input information is
+    * the isosurface mesh
+    * the device dictionary
+
+    Returns a tuple containing
+    * updated mesh string containing the device unit cell
+
+    :param mesh: the mesh object describing the isosurface
+    :type mesh: str
+
+    :param device_dict: Dictionary entry from a json file
+    :type device_dict: dict
+
+    :param n: Dimensions of the numpy field array, used as the isosurface 
+              dimensions
+    :type n: list
+
+    :param slice_UC: Gives you the option to take a slice out of the unit
+                     cell to help visualize the field (default True)
+    :type slice_UC: bool
+
+    :param transmit: Set transparency of the unit cell (competely opaque 
+                     by default); also the color cannot be changed (always 
+                     a dark-ish grey)
+    :type transmit: float
+
+    :param corner1: A corner of the slice you wish to remove/keep, used
+                    with corner2 to define a box for an intersection or
+                    difference object
+    :type corner1: list 
+
+    :param corner2: The corner diagonally opposite corner1
+    :type corner2: list 
+
+    :param subtract_box: Controls whether POV-Ray uses a difference
+                         object (True, default) or an intersection (False)
+    :type subtract_box: bool 
+
+    """
 
     from util import deep_access
     from util_iso import slice_isosurface

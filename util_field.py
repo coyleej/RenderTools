@@ -1,3 +1,17 @@
+########## SUMMARY OF CONTENTS ##########
+# Functions for extracting field data from a numpy array
+# and manipulating them into a form that scikit-image's 
+# meshing tools can handle
+#
+# A quick summary of these functions:
+# - process_field_array reformats the data into something that
+#     the renderers (povray, mayavi) can process
+# - double_roll adjusts the axes so that things aren't flipped
+#     when you go to plot them
+# - extract_* extract varying information from the numpy array
+# - calc_* calculate various things based on the data
+
+
 import numpy as np
 
 def process_field_array(field_array, center=True):

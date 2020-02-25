@@ -1,3 +1,17 @@
+########## SUMMARY OF CONTENTS ##########
+# Functions related to camera settings, headers, 
+# finishes, and calling POV-Ray to render the device.
+#
+# A quick summary of these functions:
+# - guess_camera is never directly called by the user, executes
+#     automatically if user does not specify some parameters
+# - color_and_finish never directly called by the user, but acts
+#     based on values specified by the user
+# - write_header_and_camera is required to generate a functional
+#     .pov file and must be explicitely called by the user
+# - render_pov generates the rendering command and defaults to
+#     calling povray and rendering the image
+
 def guess_camera(device_dims, coating_dims=[0,0,0], 
         camera_style="perspective", angle=0, center=[0, 0], isosurface=False):
     """ 
@@ -88,6 +102,7 @@ def guess_camera(device_dims, coating_dims=[0,0,0],
     #print("camera_look_at : ", camera_look_at)
 
     return camera_position, camera_look_at, light_position
+
 
 def color_and_finish(dev_string, default_color_dict, material, use_default_colors, 
         custom_color = [0, 0.6667, 0.667, 0, 0], ior = 1, use_finish = "dull",
