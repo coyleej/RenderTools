@@ -127,7 +127,7 @@ def create_rectangle(center, end, halfwidths, angle=0, for_silo=False):
     return rect_string
 
 
-def create_polygon(center, end, vertices, angle=0, for_silo=False):
+def create_polygon(center, end, vertices, device_dims, angle=0, for_silo=False):
     """ 
     Creates povray instructions for a polygon/prism
 
@@ -169,7 +169,7 @@ def create_polygon(center, end, vertices, angle=0, for_silo=False):
 
     # Must spawn prism at origin, then rotate and translate into position
     # Thanks, povray's weird coordinate system
-    for i in range(len(num_points)):
+    for i in range(len(vertices)):
         vertices[i][0] -= (center[0])
         vertices[i][1] -= (center[1])
         poly_string += "<{0}, {1}>, ".format(vertices[i][0], vertices[i][1])
@@ -352,7 +352,7 @@ def add_accent_lines(shape, z_top, center, dims, feature_height, angle=0, line_t
     line_color: Color of line to add, as rgb (default [0,0,0], aka black)
 
     """
-    from math import sin, cos, radians
+    from math import sin, cos, radians, sqrt
 
     line = "//Accent Lines\n\t"
 
@@ -387,9 +387,9 @@ def add_accent_lines(shape, z_top, center, dims, feature_height, angle=0, line_t
         y_limits = [(-1.0 * dims[1]), (1.0 * dims[1])]
         z_limits = [(z_top - feature_height), z_top]
 
-        # Declare cylinders parallel to X-,Y-,Z-axes
+        # Declare cylinders parallel to X-,Y-,Z-axes, respectively
         # All spawn parallel to the Z-axis because create_cylinder,
-        # but are then rotated into place
+        # but are then rotated into place, parallel to the axes
         x_cyl = "#declare Xcyl = "
         x_cyl += create_cylinder([0.0, 0.0], x_limits, line_thickness)
         x_cyl += "pigment {ob:c} color rgbft ".format(ob=123) \
@@ -426,6 +426,11 @@ def add_accent_lines(shape, z_top, center, dims, feature_height, angle=0, line_t
         # NOTE: Povray has a left-handed coordinate system
         # This makes the trig looks weird, but it works
 
+
+        # Need to add or subtract - not sure which 'cause left-handed - 
+        # the center from the vector1 (x-coord) and vector2 (y-coord)
+
+
         # Xcyl, Ycyl
         for ii in range(2):
             vector1 = y_limits[ii] * sin(radians(angle))
@@ -461,12 +466,90 @@ def add_accent_lines(shape, z_top, center, dims, feature_height, angle=0, line_t
                             + "<{0:.6f}, {1:.6f}, {2:.6f}>".format(vector1, vector2, z) \
                             + "{cb:c}\n\t".format(cb=125)
 
-
         print("WARNING: add_accent_lines NOT FULLY TESTED!!!")
         print("It is NOT guaranteed to work with rectangles not centered at origin!!!")
 
     elif shape == "polygon":
-        print("Not supported yet")
+        # dims is a list of corners, where element = [x_coord, y_coord]
+
+        # Top and bottom z-coords
+        z_limits = [(z_top - feature_height), z_top]
+
+        # Create spheres to fill corners to cover rough cylinder ends
+        sph = "#declare Corner = "
+        sph += create_sphere(line_thickness, [0.0, 0.0, 0.0], color=[0,0,0])
+
+        # Create cylinder along z axis
+        z_cyl = "#declare Zcyl = "
+        z_cyl += create_cylinder([0.0, 0.0], z_limits, line_thickness)
+        z_cyl += "pigment {ob:c} color rgbft ".format(ob=123) \
+                + "<{0}, {1}, {2}, 0, 0> ".format(color[0], color[1], color[2]) \
+                + "{cb:c}\n\t\t".format(cb=125) \
+                + "no_shadow\n\t\t{cb:c}\n\t".format(cb=125)
+
+        # Declaring shapes
+        line = sph
+        #line += z_cyl
+
+        # Need to add or subtract - not sure which 'cause left-handed - 
+        # the center from the end*[0] (x-coord) and end*[1] (y-coord)
+
+
+        # Create cylinders in xy-plane, both at top and bottom of shape.
+        # Loop over all vertices defined in dims
+        for i in range(len(dims)):
+
+            # Define cylinder-end x-,y-coords
+            end1 = dims[i]
+
+            if len(dims) == (i+1):
+                end2 = dims[0]
+            else:
+                end2 = dims[i + 1]
+
+            # Create the accent lines
+            for z in z_limits:
+
+                # Add a sphere to the first of the two end points
+                line += "object {ob:c} Corner ".format(ob=123) \
+                        + "translate " \
+                        + "<-{0:.6f}, -{1:.6f}, {2:.6f}>".format(end1[0], end1[1], z) \
+                        + "{cb:c}\n\t".format(cb=125)
+
+                # Add cylinders for bigger straight lines
+
+                # Only create cylinders if they'll be longer than the
+                # sphere radius, line_thickness, because POV-Ray
+                # doesn't like really short cylinders
+                # Do I eventually want to incorporated the blob function?
+
+                # Only need the x and y coords for cylinder length
+                # The z value drops out because it's horizontal
+                cyl_length = sqrt((end1[0] - end2[0])**2 
+                        + (end1[1] - end2[1])**2)
+
+                # Not using create_cylinder to create cylinders in the
+                # xy-plane because that function only spawns cylinders
+                # parallel to the z-axis. I'm sick of trying to rotate
+                # things in POV-Ray's left-handed coordinate system.
+                if cyl_length > line_thickness:
+                    line += "cylinder \n\t\t{ob:c}\n\t\t ".format(ob=123) \
+                            + "<-{0}, -{1}, {2:.5f}>, \n\t\t".format(end1[0], end1[1], z) \
+                            + "<-{0}, -{1}, {2:.5f}>, \n\t\t".format(end2[0], end2[1], z)
+                    line += "{0}\n\t\t".format(line_thickness)
+                    line += "pigment {ob:c} color rgbft ".format(ob=123) \
+                            + "<{0}, {1}, {2}, 0, 0> ".format(color[0], color[1], color[2]) \
+                            + "{cb:c}\n\t\t".format(cb=125) \
+                            + "no_shadow\n\t\t{cb:c}\n\t".format(cb=125)
+
+#            # Add vertical lines to the first end point
+#            line += "object {ob:c} Zcyl ".format(ob=123) \
+#                    + "translate " \
+#                    + "<{0:.6f}, {1:.6f}, {2:.6f}>".format(vector1, vector2, 0.0) \
+#                    + "{cb:c}\n\t".format(cb=125)
+
+    print("WARNING: add_accent_lines NOT FULLY TESTED!!!")
+    print("It is NOT guaranteed to work with prisms not centered at origin!!!")
 
     return line
 
@@ -640,6 +723,10 @@ def write_polygon_feature(shapes, k, device_dims, end, default_color_dict,
     angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
     points = deep_access(shapes, [str(k), 'shape_vars', 'vertices'])
 
+    # Need to track max dimension absolute values for device_dims
+    x_max = 0
+    y_max = 0
+
     # Grab the vertices out of the points dictionary
     # Must be formatted as a list (not a numpy array), to
     # match what create_polygon expects.
@@ -648,9 +735,14 @@ def write_polygon_feature(shapes, k, device_dims, end, default_color_dict,
     # Eric and his never-ending dictionaries...
     vertices = []
     for k in range(len(points)):
-        vertex = [deep_access(vert_dict2, [f"{k}", "x"]), 
-                deep_access(vert_dict2, [f"{k}", "y"])]
+        #vertex = [deep_access(vert_dict2, [f"{k}", "x"]), 
+        #        deep_access(vert_dict2, [f"{k}", "y"])]
+        vertex = [deep_access(points, [f"{k}", "x"]), 
+                deep_access(points, [f"{k}", "y"])]
         vertices.append(vertex)
+
+        x_max = max(abs(x_max), vertex[0])
+        y_max = max(abs(y_max), vertex[1])
 
     # Not sure why Kerry is tracking polygon halfwidths in her stuff.
     # Halfwidths only matter for rectangles and ellipses.
@@ -658,9 +750,9 @@ def write_polygon_feature(shapes, k, device_dims, end, default_color_dict,
     # The shape should be fully specifed by the center and vertices.
 
     polygon = "// Polygon\n\t" \
-            + create_polygon(center, end, vertices, angle=0)
+            + create_polygon(center, end, vertices, device_dims, angle=0)
 
-    polygon = color_and_finish(rectangle, default_color_dict, material, \
+    polygon = color_and_finish(polygon, default_color_dict, material, \
             use_default_colors, custom_color = custom_colors[c], \
             use_finish = use_finish, custom_finish = custom_finish)
 
@@ -670,9 +762,13 @@ def write_polygon_feature(shapes, k, device_dims, end, default_color_dict,
 
     # Add lines edges of the feature
     if add_lines == True:
+        lines = add_accent_lines("polygon", device_dims[2], center, 
+                vertices, (end[1]-end[0]), angle=angle)
+        polygon += lines
+
         print("\nWARNING: add_accent_lines does not support polygons at this time!\n")
 
-    device_dims = update_device_dims(device_dims, halfwidths[0], halfwidths[1], 0)
+    device_dims = update_device_dims(device_dims, x_max, y_max, 0)
 
     return polygon, c, device_dims
 
@@ -770,7 +866,7 @@ def write_silo_feature(shapes, k, layer_type, device_dims, end, default_color_di
         hw = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
         halfwidths = [hw.get("x"), hw.get("y")]
         angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
-        device += create_polygon(center, end, vertices, angle, for_silo=True)
+        device += create_polygon(center, end, vertices, device_dims, angle, for_silo=True)
 
         # Set up for add_lines=True, even if not actually used
         shape = "polygon"
@@ -1046,10 +1142,8 @@ def create_device(device_dict,
     from os import system
     from copy import deepcopy
     from util import deep_access
-#    from util_shapes import add_slab, update_device_dims
-#    from util_shapes import create_device_layer 
-#    from util_shapes import bg____stuff
-    from util_pov import guess_camera, color_and_finish, write_header_and_camera, render_pov
+    from util_pov import guess_camera, color_and_finish
+    from util_pov import write_header_and_camera, render_pov
 
     default_color_dict = {
             "subst": [0.15, 0.15, 0.15, 0, 0], 

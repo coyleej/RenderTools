@@ -443,12 +443,13 @@ def write_header_and_camera(device_dims, coating_dims = [0, 0, 0],
 
 
 def render_pov(pov_name, image_name, height, width,
-        display = False, transparent = True, antialias = True,
-        num_threads = 0, open_png = True, render = True):
+        display=False, transparent=True, antialias=True,
+        num_threads=0, open_png=True, render=True, 
+        render_quality=9):
     """
-    Feeds the pov file into POV-Ray. By default it will render an image, 
-    open the image post-render with eog, and print the render command 
-    to the terminal.
+    Feeds the pov file into POV-Ray. By default it will render an 
+    image open the image post-render with eog, and print the render 
+    command to the terminal.
 
     The minimum required input is:
     * the name for the generated .pov file (pov_name)
@@ -472,7 +473,8 @@ def render_pov(pov_name, image_name, height, width,
     :param width, Image width (default 800)
     :type width: int
 
-    :param display: Display render progress if ``render=True`` (default False)
+    :param display: Display render progress on the screen, only 
+                    relevant if ``render=True`` (default False)
     :type display: bool
 
     :param transparent: Sets background transparency (default True)
@@ -481,8 +483,9 @@ def render_pov(pov_name, image_name, height, width,
     :param antialias: Turns antialiasing on (default True)
     :type antialias: bool
 
-    :param num_threads: Tells POV-Ray how many threads to use when rendering,
-                        specifying 0 will use all available (default 0)
+    :param num_threads: Tells POV-Ray how many threads to use when 
+                        rendering, specifying 0 will use all available 
+                        (default 0)
     :type num_threads: int
 
     :param open_png: Opens rendered image with eog if the rendering is
@@ -491,6 +494,13 @@ def render_pov(pov_name, image_name, height, width,
 
     :param render: Tells POV-Ray to render the image (default True)
     :type render: bool
+
+    :param render_quality: Allows user to turn off shading, textures, 
+                           fancy lighting, etc. to speed up rendering, 
+                           especially for testing settings; must be an 
+                           integer in the range from 0 and 11 
+                           (default 9, POV-Ray's default)
+    :type render: int
     """
     
     from os import system
@@ -512,6 +522,21 @@ def render_pov(pov_name, image_name, height, width,
     if num_threads != 0:
         command += " +WT{0}".format(num_threads)
 
+    if render_quality != 9:
+        if render_quality not in range(0,12):
+            render_quality = 9
+        command += " +Q{0}".format(int(render_quality))
+
+        # POV-Ray image quality options:
+        # 0, 1      Just show quick colors. Use full ambient lighting only. 
+        # 2, 3      Show specified diffuse and ambient light.
+        # 4         Render shadows, but no extended lights.
+        # 5         Render shadows, including extended lights.
+        # 6, 7      Compute texture patterns, compute photons
+        # 8         Compute reflected, refracted, and transmitted rays.
+        # 9, 10, 11 Compute media and radiosity
+        # The default is 9 if not specified. Quick colors are used at 5 or below.
+
     if open_png == True:
         command += " && eog {0}".format(image_name)
 
@@ -520,10 +545,10 @@ def render_pov(pov_name, image_name, height, width,
 
     div = '----------------------------------------------------'
 
-    print("For additional rendering options, please see POV-Ray\'s documentation,")
+    print("For additional rendering options, see POV-Ray\'s documentation,")
     print("particularly the file output and tracing options:")
-    print("http://www.povray.org/documentation/view/3.6.0/219/")
-    print("http://www.povray.org/documentation/view/3.6.0/223/")
+    print("http://wiki.povray.org/content/Reference:File_Output_Options")
+    print("http://wiki.povray.org/content/Reference:Tracing_Options")
 
     div = '----------------------------------------------------'
     print("write_POV: Render with: \n{0}\n{1}\n{0}".format(div,command))
