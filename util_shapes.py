@@ -1,32 +1,33 @@
-########## SUMMARY OF CONTENTS ##########
-# All functions here pertain to creating features (shapes),
-# device layers, and accent lines.
-#
-# A quick summary of these functions:
-# (only create_device and isosurface_unit cell called directly by user)
-# - create_* creates a string describing the shape in the function name
-#     device features: cylinder, ellipse, rectangle, polygon
-#     accent line shapes: torus, sphere [, cylinder]
-# - add_slab is used to create coating layers and the substrate
-# - add_accent_lines adds accent lines to features, chooses lines based
-#     on feature geometry
-# - update_device_dims tracks the device size; device size is used to
-#     place layers, determine camera location, and add isosurface
-# - write_*_feature create strings describing the feature and calls
-#     functions including create_*, add_accent_lines, and others
-# - check_for_false_silos omits anything with dimension = 0
-# - create_device_layer creates a single layer of a device using 
-#     write_*_feature and others
-# - create_device loops through all layers using create_device_layer, 
-#     replicates the unit cell as requested, and adds the substrate and
-#     and all coatings, 
-# - isosurface_unit_cell generates a single unit cell using many of the
-#     functions in this file, but with isosurface-specific modifications
-#     including a different origin and scaling the device
+"""
+Create features (shapes), device layers, and accent lines.
+
+Only create_device and isosurface_unit cell called directly by user.
+
+A quick summary:
+  * create_* creates a string describing the shape in the function name
+    device features: cylinder, ellipse, rectangle, polygon
+    accent line shapes: torus, sphere [, cylinder]
+  * add_slab is used to create coating layers and the substrate
+  * add_accent_lines adds accent lines to features, chooses lines based
+    on feature geometry
+  * update_device_dims tracks the device size; device size is used to
+    place layers, determine camera location, and add isosurface
+  * write_*_feature create strings describing the feature and calls
+    functions including create_*, add_accent_lines, and others
+  * check_for_false_silos omits anything with dimension = 0
+  * create_device_layer creates a single layer of a device using 
+    write_*_feature and others
+  * create_device loops through all layers using create_device_layer, 
+    replicates the unit cell as requested, and adds the substrate and
+    and all coatings, 
+  * isosurface_unit_cell generates a single unit cell using many of the
+    functions in this file, but with isosurface-specific modifications
+    including a different origin and scaling the device
+"""
 
 def create_cylinder(center, end, radius, for_silo=False):
     """ 
-    Creates povray instructions for a cylindrical pillar 
+    Create and return povray instructions for a cylindrical pillar.
 
     :param center: Point on the x,y-plane where the shape is centered
     :type center: list
@@ -42,7 +43,6 @@ def create_cylinder(center, end, radius, for_silo=False):
 
     :return: POV-Ray code describing the cylinder
     :rtype: string
-
     """
     cyl_string = "cylinder \n\t\t{ob:c}\n\t\t ".format(ob=123) \
             + "<{0}, {1}, {2:.5f}>, \n\t\t".format(center[0], center[1], end[0]) \
@@ -58,7 +58,7 @@ def create_cylinder(center, end, radius, for_silo=False):
 
 def create_ellipse(center, end, halfwidths, angle=0, for_silo=False):
     """ 
-    Creates povray instructions for a ellipical pillar 
+    Create and return povray instructions for a ellipical pillar.
 
     :param center: Point on the x,y-plane where the shape is centered
     :type center: list
@@ -93,7 +93,7 @@ def create_ellipse(center, end, halfwidths, angle=0, for_silo=False):
 
 def create_rectangle(center, end, halfwidths, angle=0, for_silo=False):
     """ 
-    Creates povray instructions for a rectangular box
+    Create and return povray instructions for a rectangular box.
 
     :param center: Point on the x,y-plane where the shape is centered
     :type center: list
@@ -129,9 +129,7 @@ def create_rectangle(center, end, halfwidths, angle=0, for_silo=False):
 
 def create_polygon(center, end, vertices, device_dims, angle=0, for_silo=False):
     """ 
-    Creates povray instructions for a polygon/prism
-
-    ** Currently untested!! **
+    Create and return povray instructions for a polygon/prism.
 
     :param center: Point on the x,y-plane where the shape is centered
     :type center: list
@@ -154,11 +152,6 @@ def create_polygon(center, end, vertices, device_dims, angle=0, for_silo=False):
     :return: POV-Ray code describing the prism
     :rtype: string
     """
-
-    print("\ncreate_polygon is UNTESTED!\n")
-    print("The substrate portion of write_POV contains a working prism implementation\n")
-    print("Need to remove \"halfwidths\" from the function call; it shouldnt be there.\n")
-
     # Povray requires that you close the shape
     # The first and last point must be the same
     num_points = len(vertices) + 1
@@ -189,10 +182,12 @@ def create_polygon(center, end, vertices, device_dims, angle=0, for_silo=False):
 
 def add_slab(lattice_vecs, thickness, device_dims, layer_type="substrate"):
     """
-    Adds a slab using the lattice vectors as the dimensions. Use this 
-    for the substrate, background, and any coating layers. You must
-    specify the type in the function call. Designed so that lattice_vecs
-    and device_dims can be either a unit cell or the full device.
+    Return a slab using lattice vectors as the dimensions. 
+    
+    Use this for the substrate, background, and any coating layers. 
+    You must specify the type in the function call. Designed so that 
+    lattice_vecs and device_dims can be either a unit cell or the full 
+    device.
 
     :param lattice_vecs: The lattice vectors defining the slab. In the 
                          case of the substrate and coatings, these are
@@ -203,20 +198,19 @@ def add_slab(lattice_vecs, thickness, device_dims, layer_type="substrate"):
     :type thickness: float
 
     :param device_dims: Dimensions of the existing device, in order to
-                        know how far to shift the slab. Depending on the
-                        slab to be inserted.
+                        know how far to shift the slab. Depending on 
+                        the slab to be inserted.
     :type device_dims: list
 
-    :param layer_type: Type of the layer to be inserted. Determines which
-                       direction everything is shifted. Accepts arguments
-                       "coating", "background", "isosurface", and 
-                       "substrate" (default)
+    :param layer_type: Type of the layer to be inserted. Determines 
+                       which direction everything is shifted. Accepts 
+                       arguments "coating", "background", "isosurface",
+                       and "substrate" (default)
     :type layer_type: string
 
     :return: POV-Ray code describing the slab and the slab halfwidths
     :rtype: tuple
     """
-
     halfwidth = [(0.5 * (lattice_vecs[0][0] + lattice_vecs[1][0])),
             (0.5 * (lattice_vecs[0][1] + lattice_vecs[1][1]))]
 
@@ -269,21 +263,36 @@ def add_slab(lattice_vecs, thickness, device_dims, layer_type="substrate"):
 
 def create_torus(major_radius, minor_radius, center, z_top, angle=0, color=[0,0,0]):
     """
-    Creates a torus for the purpose of adding lines to circular and elliptical features
+    Create and return a torus for accent line functionality.
+    
+    Used for adding accent lines to circular and elliptical features.
     (povray torus docs: http://wiki.povray.org/content/Reference:Torus)
 
-    major_radius: Radius of the circular or elliptical features. It takes 
-                  either the halfwidths as a list (circles and ellipses) or
-                  a single float/int (circles only). The function handles
-                  the difference automatically.
-    minor_radius: Called "line_thickness" in other functions
-    center: The x-,y-coordinates of the center
-    z_top: The z-coordinate of the center
-    angle: Only relevant for the elliptical pillars, should they be rotated 
-           about the z-axis (default 0)
-    color: Torus color (defaults to black)
-    """
+    :param major_radius: Radius of the circular or elliptical features.
+                  It takes either the halfwidths as a list (circles and
+                  ellipses) or a single float/int (circles only). The 
+                  function handles the difference automatically.
+    :type major_radius: list or int
 
+    :param minor_radius: Called "line_thickness" in other functions
+    :type minor_radius: float
+    
+    :param center: The x-,y-coordinates of the center
+    :type center: list
+
+    :param z_top: The z-coordinate of the center
+    :type z_top: float
+
+    :param angle: Only relevant for elliptical pillars, should they be 
+                  rotated about the z-axis (default 0)
+    :type angle: float
+
+    :param color: Torus color (defaults to black)
+    :type color: list
+
+    :return: String containing torus description
+    :rtype: str
+    """
     # Create initial torus using smaller of the major radii
     # Determine ellipse v circle based on type of major_radius
     if isinstance(major_radius, list):
@@ -321,13 +330,20 @@ def create_torus(major_radius, minor_radius, center, z_top, angle=0, color=[0,0,
 
 def create_sphere(radius, center, color=[0,0,0]):
     """
-    Creates a sphere for the accent line stuff
+    Create and return a sphere for the accent line stuff.
 
-    radius: Sphere radius ("line_thickness" in other functions)
-    center: The x-,y-,z-coordinates of the center
-    color: Torus color (defaults to black)
+    :param radius: Sphere radius ("line_thickness" in other functions)
+    :type radius: float
+
+    :param center: The x-,y-,z-coordinates of the center
+    :type center: list
+
+    :param color: Torus color (defaults to black)
+    :type color: list
+
+    :return:  povray sphere description
+    :rtype: string
     """
-
     sphere = "sphere\n\t\t{ob:c}\n\t\t".format(ob=123) \
             + "<{0}, {1}, {2}>, {3}\n\t\t".format(center[0], center[1], center[2], radius) \
             + "pigment {ob:c} color rgbft ".format(ob=123) \
@@ -339,18 +355,41 @@ def create_sphere(radius, center, color=[0,0,0]):
 
 def add_accent_lines(shape, z_top, center, dims, feature_height, angle=0, line_thickness=0.0020, color=[0,0,0]):
     """
-    Adds lines to accentuate the edges of the device
-    shape: geometry of feature, accepts "circle", "ellipse", "rectangle", and "polygon"
-    z_top: z-component of the top of the device, grab from device_dims (before updating) 
-    dims: Dimensions for the geometry. Required type depends on ``shape``. 
-          "circle" requires a float (the radius), 
-          "ellipse" and "rectangle" require [halfwidth1, halfwidth2], 
-          "polygon" requires [point1, point2, ...]
-    angle: Rotation angle of feature in degrees (default 0)
-    feature_height: Height of the device (required for rectangles and polygons)
-    line_thickness: Thickness of the line to add (default 0.0025)
-    line_color: Color of line to add, as rgb (default [0,0,0], aka black)
+    Generate and return feature accent lines.
+    
+    Users can optionally add lines to accentuate device features and 
+    return updated device.
 
+    :param shape: geometry of feature, accepts "circle", "ellipse", 
+                  "rectangle", and "polygon"
+    :type shape: string
+
+    :param z_top: z-component of the top of the device, grab from 
+                  device_dims (before updating) 
+    :type z_top: float
+
+    :param dims: Dimensions for the geometry. Required type depends 
+                 on ``shape``. 
+                 "circle" requires a float (the radius), 
+                 "ellipse" and "rectangle" require [halfwidth1, halfwidth2], 
+                 "polygon" requires [point1, point2, ...]
+    :type dims: list
+
+    :param angle: Rotation angle of feature in degrees (default 0)
+    :type angle: float
+
+    :param feature_height: Height of the device (required for 
+                           rectangles and polygons)
+    :type feature_height: float
+
+    :param line_thickness: Thickness of the line to add (default 0.0025)
+    :type line_thickness: float
+
+    :param line_color: Color of line to add, as rgb (default [0,0,0], aka black)
+    :type line_color: list
+
+    :return: Accent lines for the feature
+    :rtype: string 
     """
     from math import sin, cos, radians, sqrt
 
@@ -549,19 +588,21 @@ def add_accent_lines(shape, z_top, center, dims, feature_height, angle=0, line_t
 #                    + "{cb:c}\n\t".format(cb=125)
 
     print("WARNING: add_accent_lines NOT FULLY TESTED!!!")
-    print("It is NOT guaranteed to work with prisms not centered at origin!!!")
+    print("It is NOT guaranteed to work with rectangles/prisms not centered at origin!!!")
 
     return line
 
 
 def update_device_dims(device_dims, new_x, new_y, new_z):
     """
-    Tracks maximum unit device dimensions to aid in camera placement.
-    MAlso used to track coating thickness in the case of multiple
+    Update and return the device dimensions when adding features.
+
+    Tracks maximum unit device dimensions to aid in camera placement. 
+    Also used to track coating thickness in the case of multiple 
     coatings.
 
     These dimensions will always be positive, even though the device
-    is built with the top at z=0.
+    is built with the top of the device at z=0.
 
     :param device_dims: Existing device dimensions
     :type device_dims: list
@@ -587,12 +628,62 @@ def update_device_dims(device_dims, new_x, new_y, new_z):
 def write_circle_feature(shapes, k, device_dims, end, default_color_dict,
         use_default_colors, custom_colors, c, use_finish, custom_finish,
         add_lines = False):
-
     """
     Creates a circle feature within a layer, complete with color and
     finish specifications.
-    """
 
+    :param shapes: The dictionary contains all shape information
+    :type shapes: dict
+
+    :param k: Counter iterating though features
+    :type k: int
+
+    :param device_dims: Dimensions of the unit cell
+    :type device_dims: list
+
+    :param end: Limits on the z-dimensions, as [upper, lower]
+    :type end: list
+
+    :param default_color_dict: Dictionary containing default finishes 
+                               for the various material types
+    :type default_color_dict: dict
+
+    :param use_default_colors: Boolean selects which color set to use.
+                               True will assign colors based on the
+                               material type ("Si", "SiO2", and "subst").
+                               False will use user-assigned custom colors.
+    :type use_default_colors: bool
+
+    :param custom_color: RGBFT values describe a single color. If you
+                         set ``use_default_colors=False`` but forget
+                         to specify a custom color, it will use #00aaaa
+                         (the Windows 95 default desktop color).
+
+                         RGB values must be in the range [0,1]. F and T
+                         are filter and transmit, respectively. They
+                         are optional and both default to 0 for most
+                         finishes.
+    :type custom_color: list
+
+    :param c: Counter iterating though custom_color
+    :type c: int
+
+    :param use_finish: Select the finish that you want. Current options:
+                       "material", "Si", "SiO2", "glass", "bright_metal",
+                       "dull_metal", "irid", "billiard", "dull", "custom"
+    :type use_finish: str
+
+    :param custom_finish: User-defined custom finish. Set use_finish=custom
+                          to call this option.
+    :type custom_finish: str
+
+    :param add_lines: Option to add the accent lines to the feature
+                      (default False)
+    :type add_lines: bool
+
+    :return: String with circle feature information
+    :rtype: str
+    """
     from util import deep_access
     from util_pov import color_and_finish
 
@@ -625,12 +716,62 @@ def write_circle_feature(shapes, k, device_dims, end, default_color_dict,
 def write_ellipse_feature(shapes, k, device_dims, end, default_color_dict,
         use_default_colors, custom_colors, c, use_finish, custom_finish,
         add_lines = False):
-
     """
-    Creates a ellipse feature within a layer, complete with color and
+    Create an ellipse feature within a layer, complete with color and
     finish specifications.
-    """
 
+    :param shapes: The dictionary contains all shape information
+    :type shapes: dict
+
+    :param k: Counter iterating though features
+    :type k: int
+
+    :param device_dims: Dimensions of the unit cell
+    :type device_dims: list
+
+    :param end: Limits on the z-dimensions, as [upper, lower]
+    :type end: list
+
+    :param default_color_dict: Dictionary containing default finishes 
+                               for the various material types
+    :type default_color_dict: dict
+
+    :param use_default_colors: Boolean selects which color set to use.
+                               True will assign colors based on the
+                               material type ("Si", "SiO2", and "subst").
+                               False will use user-assigned custom colors.
+    :type use_default_colors: bool
+
+    :param custom_color: RGBFT values describe a single color. If you
+                         set ``use_default_colors=False`` but forget
+                         to specify a custom color, it will use #00aaaa
+                         (the Windows 95 default desktop color).
+
+                         RGB values must be in the range [0,1]. F and T
+                         are filter and transmit, respectively. They
+                         are optional and both default to 0 for most
+                         finishes.
+    :type custom_color: list
+
+    :param c: Counter iterating though custom_color
+    :type c: int
+
+    :param use_finish: Select the finish that you want. Current options:
+                       "material", "Si", "SiO2", "glass", "bright_metal",
+                       "dull_metal", "irid", "billiard", "dull", "custom"
+    :type use_finish: str
+
+    :param custom_finish: User-defined custom finish. Set use_finish=custom
+                          to call this option.
+    :type custom_finish: str
+
+    :param add_lines: Option to add the accent lines to the feature
+                      (default False)
+    :type add_lines: bool
+
+    :return: String with ellipse feature information
+    :rtype: str
+    """
     from util import deep_access
     from util_pov import color_and_finish
 
@@ -665,12 +806,62 @@ def write_ellipse_feature(shapes, k, device_dims, end, default_color_dict,
 def write_rectangle_feature(shapes, k, device_dims, end, default_color_dict,
         use_default_colors, custom_colors, c, use_finish, custom_finish,
         add_lines = False):
-
     """
     Creates a rectangle feature within a layer, complete with color and
     finish specifications.
-    """
 
+    :param shapes: The dictionary contains all shape information
+    :type shapes: dict
+
+    :param k: Counter iterating though features
+    :type k: int
+
+    :param device_dims: Dimensions of the unit cell
+    :type device_dims: list
+
+    :param end: Limits on the z-dimensions, as [upper, lower]
+    :type end: list
+
+    :param default_color_dict: Dictionary containing default finishes 
+                               for the various material types
+    :type default_color_dict: dict
+
+    :param use_default_colors: Boolean selects which color set to use.
+                               True will assign colors based on the 
+                               material type ("Si", "SiO2", and "subst"). 
+                               False will use user-assigned custom colors.
+    :type use_default_colors: bool
+
+    :param custom_color: RGBFT values describe a single color. If you 
+                         set ``use_default_colors=False`` but forget 
+                         to specify a custom color, it will use #00aaaa 
+                         (the Windows 95 default desktop color).
+
+                         RGB values must be in the range [0,1]. F and T
+                         are filter and transmit, respectively. They
+                         are optional and both default to 0 for most
+                         finishes.
+    :type custom_color: list
+
+    :param c: Counter iterating though custom_color
+    :type c: int
+
+    :param use_finish: Select the finish that you want. Current options:
+                       "material", "Si", "SiO2", "glass", "bright_metal",
+                       "dull_metal", "irid", "billiard", "dull", "custom"
+    :type use_finish: str
+
+    :param custom_finish: User-defined custom finish. Set use_finish=custom
+                          to call this option.
+    :type custom_finish: str
+
+    :param add_lines: Option to add the accent lines to the feature
+                      (default False)
+    :type add_lines: bool
+
+    :return: String containing rectangle feature
+    :rtype: str
+    """
     from util import deep_access
     from util_pov import color_and_finish
 
@@ -705,14 +896,65 @@ def write_rectangle_feature(shapes, k, device_dims, end, default_color_dict,
 def write_polygon_feature(shapes, k, device_dims, end, default_color_dict,
         use_default_colors, custom_colors, c, use_finish, custom_finish,
         add_lines = False):
-
     """
-    Creates a polygon feature within a layer, complete with color and
-    finish specifications. The polygon vertices must be specified in 
-    counter-clockwise order for S4. (POV-Ray doesn't care about the 
-    direction as long as the shape is closed.)
-    """
+    Create a polygon feature, with color and finish.
 
+    The polygon vertices must be specified in counter-clockwise order 
+    for S4, but POV-Ray doesn't care about the direction as long as the 
+    shape is closed.
+
+    :param shapes: The dictionary containing the shape information
+    :type shapes: dict
+
+    :param k: Counter iterating though features
+    :type k: int
+
+    :param device_dims: Dimensions of the unit cell
+    :type device_dims: list
+
+    :param end: Limits on the z-dimensions, as [upper, lower]
+    :type end: list
+
+    :param default_color_dict: Dictionary containing default finishes 
+                               for the various material types
+    :type default_color_dict: dict
+
+    :param use_default_colors: Boolean selects which color set to use.
+                               True will assign colors based on the 
+                               material type ("Si", "SiO2", and "subst"). 
+                               False will use user-assigned custom colors.
+    :type use_default_colors: bool
+
+    :param custom_color: RGBFT values describe a single color. If you 
+                         set ``use_default_colors=False`` but forget 
+                         to specify a custom color, it will use #00aaaa 
+                         (the Windows 95 default desktop color).
+
+                         RGB values must be in the range [0,1]. F and T
+                         are filter and transmit, respectively. They
+                         are optional and both default to 0 for most
+                         finishes.
+    :type custom_color: list
+
+    :param c: Counter iterating though custom_color
+    :type c: int
+
+    :param use_finish: Select the finish that you want. Current options:
+                       "material", "Si", "SiO2", "glass", "bright_metal",
+                       "dull_metal", "irid", "billiard", "dull", "custom"
+    :type use_finish: str
+
+    :param custom_finish: User-defined custom finish. Set use_finish=custom
+                          to call this option.
+    :type custom_finish: str
+
+    :param add_lines: Option to add the accent lines to the feature
+                      (default False)
+    :type add_lines: bool
+
+    :return: String with polygon feature information
+    :rtype: str
+    """
     from util import deep_access
     from util_pov import color_and_finish
 
@@ -775,12 +1017,22 @@ def write_polygon_feature(shapes, k, device_dims, end, default_color_dict,
 
 def check_for_false_silos(shapes, layer_type):
     """
+    Remove 'silos' that aren't actually silos.
+
     'False silos' are instances where the layer to be subtracted has a
     dimension of zero. POV-Ray fill crash if given a 'false silo'.
     This function keeps POV-Ray happy by resetting all 'false silos'
     to the fully solid shape.
-    """
 
+    :param shapes: The dictionary containing the shape information
+    :type shapes: dict
+
+    :param layer_type: The type of the layer as a string
+    "type layer_type: str
+
+    :return: Updated string without the false silo
+    :rtype: str
+    """
     from util import deep_access
 
     for iii in range(len(layer_type)-1):
@@ -805,12 +1057,65 @@ def check_for_false_silos(shapes, layer_type):
 def write_silo_feature(shapes, k, layer_type, device_dims, end, default_color_dict,
         use_default_colors, custom_colors, c, use_finish, custom_finish,
         add_lines = False):
-
     """
+    Create a silo feature, with color and finish.
+
     Creates a silo. Should be able to handle any possible combination 
     of features, including multiple holes in a single feature.
-    """
 
+    :param shapes: The dictionary containing the shape information
+    :type shapes: dict
+
+    :param k: Counter iterating though features
+    :type k: int
+
+    :param device_dims: Dimensions of the unit cell
+    :type device_dims: list
+
+    :param end: Limits on the z-dimensions, as [upper, lower]
+    :type end: list
+
+    :param default_color_dict: Dictionary containing default finishes
+                               for the various material types
+    :type default_color_dict: dict
+
+    :param use_default_colors: Boolean selects which color set to use.
+                               True will assign colors based on the 
+                               material type ("Si", "SiO2", and "subst"). 
+                               False will use user-assigned custom colors.
+    :type use_default_colors: bool
+
+    :param custom_color: RGBFT values describe a single color. If you 
+                         set ``use_default_colors=False`` but forget 
+                         to specify a custom color, it will use #00aaaa 
+                         (the Windows 95 default desktop color).
+
+                         RGB values must be in the range [0,1]. F and T
+                         are filter and transmit, respectively. They
+                         are optional and both default to 0 for most
+                         finishes.
+    :type custom_color: list
+
+    :param c: Counter iterating though custom_color
+    :type c: int
+
+    :param use_finish: Select the finish that you want. Current options:
+                       "material", "Si", "SiO2", "glass", "bright_metal",
+                       "dull_metal", "irid", "billiard", "dull", "custom"
+    :type use_finish: str
+
+    :param custom_finish: User-defined custom finish. Set use_finish=custom
+                          to call this option.
+    :type custom_finish: str
+
+    :param add_lines: Option to add the accent lines to the feature
+                      (default False)
+    :type add_lines: bool
+
+    :return: a string describing the silo, the color counter, and 
+             updated device_dims
+    :rtype: tuple
+    """
     from util import deep_access
     from util_pov import color_and_finish
     from copy import deepcopy
@@ -960,14 +1265,69 @@ def write_silo_feature(shapes, k, layer_type, device_dims, end, default_color_di
 
 def create_device_layer(shapes, device_dims, end, thickness, 
         default_color_dict, use_default_colors, custom_colors, 
-        c, use_finish, custom_finish, add_lines):
-
+        c, use_finish, custom_finish, add_lines=False):
     """
-    Generates a single layer of a device. Called by create_device,
-    which creates the full unit cell. Adds a color and finish to each
-    feature as it's created.
-    """
+    Generate a single layer of a device. 
+    
+    Called by create_device, which creates the full unit cell. Adds a 
+    color and finish to each feature as it's created.
 
+    :param shapes: The dictionary containing the shape information
+    :type shapes: dict
+
+    :param k: Counter iterating though features
+    :type k: int
+
+    :param device_dims: Dimensions of the unit cell
+    :type device_dims: list
+
+    :param end: Limits on the z-dimensions, as [upper, lower]
+    :type end: list
+
+    :param thickness: thickness of the layer
+    :type end: float
+
+    :param default_color_dict: Dictionary containing default finishes
+                               for the various material types
+    :type default_color_dict: dict
+
+    :param use_default_colors: Boolean selects which color set to use.
+                               True will assign colors based on the 
+                               material type ("Si", "SiO2", and "subst"). 
+                               False will use user-assigned custom colors.
+    :type use_default_colors: bool
+
+    :param custom_color: RGBFT values describe a single color. If you 
+                         set ``use_default_colors=False`` but forget 
+                         to specify a custom color, it will use #00aaaa 
+                         (the Windows 95 default desktop color).
+
+                         RGB values must be in the range [0,1]. F and T
+                         are filter and transmit, respectively. They
+                         are optional and both default to 0 for most
+                         finishes.
+    :type custom_color: list
+
+    :param c: Counter iterating though custom_color
+    :type c: int
+
+    :param use_finish: Select the finish that you want. Current options:
+                       "material", "Si", "SiO2", "glass", "bright_metal",
+                       "dull_metal", "irid", "billiard", "dull", "custom"
+    :type use_finish: str
+
+    :param custom_finish: User-defined custom finish. Set use_finish=custom
+                          to call this option.
+    :type custom_finish: str
+
+    :param add_lines: Option to add the accent lines to the feature
+                      (default False)
+    :type add_lines: bool
+
+    :return: a string describing the silo, the color counter, and 
+             updated device_dims
+    :rtype: tuple
+    """
     from util import deep_access
 
     if use_default_colors == True:
@@ -1044,18 +1404,16 @@ def create_device_layer(shapes, device_dims, end, thickness,
     return device_layer, c, device_dims
 
 
-
 def create_device(device_dict, 
-    num_UC_x = 5, num_UC_y = 5, 
+    num_UC_x = 2, num_UC_y = 2, 
     coating_layers = [], 
     coating_color_dict = {"background":[1, 0, 0, 0, 0]}, 
     coating_ior_dict = {"background":1.0}, 
     use_default_colors = True, custom_colors = [[0, 0.667, 0.667, 0, 0]], 
     use_finish = "", custom_finish = "", 
-    add_lines = True, 
+    add_lines = False, 
     line_thickness = 0.0025, line_color = [0, 0, 0, 0, 0],
     display = False, render = True, num_threads = 0): #, 
-
     """ 
     Generates a string containing the device information.
 
@@ -1135,10 +1493,10 @@ def create_device(device_dict,
     :param render: Tells POV-Ray to render the image (default True)
     :type render: bool
 
-    :return: device, device_dims, coating_dims
+    :return: a string describing the device, updated device dimensions, 
+             and updated coating dimensions
     :rtype: tuple
     """
-
     from os import system
     from copy import deepcopy
     from util import deep_access
@@ -1315,7 +1673,6 @@ def create_device(device_dict,
 
     device_dims = update_device_dims(device_dims, 0, 0, thickness_sub)
 
-    
     # Cap how far out the camera will go when replicating unit cell
     device_dims = update_device_dims(device_dims, 
             (min(5, num_UC_x) * device_dims[0]), 
@@ -1333,16 +1690,18 @@ def isosurface_unit_cell(mesh,
         corner1 = [0,0,0], 
         corner2 = [0,0,0], 
         subtract_box = True):
-
     """ 
-    Generates a string containing the device information.
+    Generate a device string for use with isosurfaces.
+
+    This function is meant only for use with isosurfaces because the
+    isosurface center and scaling is different than the normal method.
+    The device color and finish selection is much more limited than 
+    for normal devices and does not include the ability to replicate
+    the unit cell.
 
     The required input information is
     * the isosurface mesh
     * the device dictionary
-
-    Returns a tuple containing
-    * updated mesh string containing the device unit cell
 
     :param mesh: the mesh object describing the isosurface
     :type mesh: str
@@ -1375,8 +1734,9 @@ def isosurface_unit_cell(mesh,
                          object (True, default) or an intersection (False)
     :type subtract_box: bool 
 
+    :return: Unit cell string specifically for use with isosurfaces
+    :rtype: str
     """
-
     from util import deep_access
     from util_iso import slice_isosurface
     from util_shapes import create_device_layer
@@ -1451,5 +1811,4 @@ def isosurface_unit_cell(mesh,
     mesh += device
 
     return mesh
-
 

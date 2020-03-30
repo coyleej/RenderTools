@@ -1,16 +1,19 @@
-########## SUMMARY OF CONTENTS ########## 
-# All functions specific to isosurface creation/rendering
-# Functions to manipulate data into the proper form are 
-# located in the util_field file.
-#
-# A quick summary of these functions:
-# (the function for generating the isosurface unit cell 
-# is isosurface_unit_cell, which is located in util_shapes)
-# - create_mesh2 calls write_mesh2_params
-# - write_mesh2_params never directly called by the user
-# - slice_isosurface is used to cut chunks out of the isosurface
-#     and/or the device unit cell
+"""
+Create isosurfaces.
 
+These functions are specific to isosurface creation/rendering.
+The functions to manipulate data into the proper form are 
+located in the util_field file.
+
+The function for generating the isosurface unit cell is 
+isosurface_unit_cell, located in util_shapes.
+
+A quick summary of these functions:
+  * create_mesh2 calls write_mesh2_params
+  * write_mesh2_params never directly called by the user
+  * slice_isosurface is used to cut chunks out of the isosurface
+    and/or the device unit cell
+"""
 
 def create_mesh2(field, cutoffs, colormap = "viridis", transmit = 0.4, cmap_limits = ["a","b"]):
     """
@@ -205,10 +208,11 @@ def slice_isosurface(mesh, corner1, corner2, subtract_box = False):
     :param corner2: The corner of the box opposite corner1
     :type parameter: list
 
-    :param subtract_box: Switches between POV-Ray's intersect (if False) 
+    :param subtract_box: Switch between POV-Ray's intersect (if False) 
                          and difference (if True) functions; intersect 
-                         preserves anything within the box limits, difference
-                         removes anythin within the box limits
+                         preserves anything within the box limits, 
+                         difference removes anythin within the box 
+                         limits
     :type parameter: boolean
 
     :return: The modified mesh string

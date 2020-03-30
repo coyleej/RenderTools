@@ -1,71 +1,85 @@
-########## SUMMARY OF CONTENTS ##########
-# Functions for extracting field data from a numpy array
-# and manipulating them into a form that scikit-image's 
-# meshing tools can handle
-#
-# A quick summary of these functions:
-# - process_field_array reformats the data into something that
-#     the renderers (povray, mayavi) can process
-# - double_roll adjusts the axes so that things aren't flipped
-#     when you go to plot them
-# - extract_* extract varying information from the numpy array
-# - calc_* calculate various things based on the data
+"""
+Extract and manipulate numpy field data.
 
+Functions to extract field data from a numpy array and manipulating 
+them into a form that scikit-image's meshing tools can handle.
 
+A quick summary of these functions:
+  * process_field_array reformats the data into something that
+      the renderers (povray, mayavi) can process
+  * double_roll adjusts the axes so that things aren't flipped
+      when you go to plot them
+  * extract_* extract varying information from the numpy array
+  * calc_* calculate various things based on the data
+"""
 import numpy as np
 
 def process_field_array(field_array, center=True):
     """
-    Takes the base array and processes for visualization
+    Extract field data and dimensionality from simulation data.
 
-    Args:
+    POV-Ray and mayavi can't interpret the simulation's output array.
 
-        field_array: numpy array indexed by
-                     [z_idx, y_idx, h_idx, E/H, (x, y, z)]
-        center: whether to move the origin to the center (double roll by nx//2,
-                ny//2)
+    :param field_array: simulation output array indexed by
+                        [z_idx, y_idx, h_idx, E/H, (x, y, z)]
+    :type field_array: np.array
 
-    Returns:
+    :param center: whether to move the origin to the center 
+                   (default True)
+    :type center: bool
 
-        stuff
+    :return: Electric or magnetic field numpy array and the array
+             dimensionality as integers
+    :rtype: tuple
+
+    :raises RuntimeError: The input array must be 5D
     """
-    # check that the array is appropriately sized
     if field_array.ndim != 5:
         raise RuntimeError("field_array must be 5D")
-    # remember that the enemy's gate is down
-    # so we need to reverse the direction to ensure that mayavi
-    # puts the "top" of the simulation at the "top" of the visualization
+
+    # we need to reverse the direction to ensure that renderers put the
+    # "top" of the simulation at the "top" of the visualization
     field_array = field_array[::-1, :, :, :, :]
-    # then, swap the z, x axes so that we end up with [x, y, z, ...] as
-    # required by mayavi
-    field_array = field_array.swapaxes(0, 2)
+
+    # swap the z, x axes so that we end up with [x, y, z, ...] and
     # extract the dimensionality
+    field_array = field_array.swapaxes(0, 2)
     nx, ny, nz, _, _ = field_array.shape
-    # now apply the centering if required
+
     if center:
         field_array = double_roll(field_array, nx//2, ny//2)
-    # return values
     return field_array, nx, ny, nz
 
 def double_roll(array, n0, n1):
     """
-    Take the input array and roll along two axes
+    Roll the input array along two axes and return the result.
 
-    Args:
+    Required because the order of the axes is flipped between S4 and
+    what both POV-Ray and mayavi expect.
 
-        array: array to shift. must be >= 2 dimensional
-        n0: number of elements to shift along first axis
-        n1: number of elements to shift along second axis
+    :param array: array to shift. must be >= 2 dimensional
+    :type array: np.array
 
-    Returns:
+    :param n0: number of elements to shift along first axis
+    :type n0: int
 
-        copy of the input array shifted by n0, n1
+    :param n1: number of elements to shift along second axis
+    :type n1: int
+
+    :return: Copy of the input array shifted by n0, n1
+    "rtype: np.array
     """
     return np.copy(np.roll(np.roll(array, n0, axis=0), n1, axis=1))
 
 def extract_components(field):
     """
     extract the components of a field
+
+    :param field: Electric or magnetic field
+    :type field: np.array
+
+    :return: Lists the components of the field
+    :rtype: list
     """
     ret_list = list()
     for i in range(3):
@@ -74,7 +88,14 @@ def extract_components(field):
 
 def extract_e_field(field_array):
     """
-    extract and return components of the electric field
+    Extract and return components of the electric field.
+
+    :param field_array: Electric field
+    :type field_array: np.array
+
+    :return: Electric field vectors and their x,y,z components 
+             as np arrays
+    :rtype: tuple
     """
     # obtain the raw e_field
     e_field = field_array[:, :, :, 0, :]
@@ -84,7 +105,14 @@ def extract_e_field(field_array):
 
 def extract_h_field(field_array):
     """
-    extract and return components of the electric field
+    Extract and return components of the electric field.
+
+    :param field_array: Magnetic field
+    :type field_array: np.array
+
+    :return: Magnetic field vectors and their x,y,z components
+             as np arrays
+    :rtype: tuple
     """
     # obtain the raw e_field
     h_field = field_array[:, :, :, 1, :]
@@ -94,40 +122,37 @@ def extract_h_field(field_array):
 
 def extract_real_components(field):
     """
-    extract the real components of a given field
+    Extract the real components of a given field.
+
+    :param field: Electric or magnetic field
+    :type field: np.array
+
+    :return: Lists the real components of the field
+    :rtype: list
     """
     ret_list = list()
     for i in range(3):
         ret_list.append(np.real(field[:, :, :, i]))
     return ret_list
 
-#def create_grid(Lx, Ly, h1, nx, ny, nz):
-#    """
-#    create a mesh grid for the system
-#    """
-#    # create the meshgrid to plot the contours, vectors on
-#    # NOTE: this needs to be input in X, Y, Z ordering with "ij" indexing
-#    xv, yv, zv = np.meshgrid(np.linspace(-Lx/2, Lx/2, nx),
-#                             np.linspace(-Ly/2, Ly/2, ny),
-#                             np.linspace(0.0, h1, nz),
-#                             sparse=False, indexing="ij")
-#    return xv, yv, zv
-
-
 def calc_field_mag(field):
     """
-    Calculate the magnitude of a given field
-    """
+    Calculate the magnitude of a given field.
 
+    :param field: Electric or magnetic field
+    :type field: np.array
+
+    :return: Field magnitude
+    :rtype: np.array
+    """
     from util import deep_access
 
-    # First, we multiply the field by its complex conjugate
-    # this will effectively square the values of each of the components
-    # of the vector
-    # Second, we take the real component. While multiplying by the complex
-    # conjugate will guarantee a real result, it is still of type complex
-    # Third, we sum the vector components (x*x + y*y + z*z)
-    # Finally, we take the square root
+    # First, we multiply the field by its complex conjugate.
+    # (This effectively squares the values of the vector components.)
+    # Second, we take the real component. (Multiplying by the complex
+    # conjugate guarantees a real result, it is still type complex.)
+    # Third, we sum the vector components (x*x + y*y + z*z).
+    # Finally, we take the square root.
 
     return np.sqrt(np.sum(np.real(np.multiply(field,
                                               np.conj(field))), axis=-1))
@@ -135,7 +160,19 @@ def calc_field_mag(field):
 
 def calc_energy_density(e_field, h_field, eps_arr):
     """
-    calculate the local energy density at every point
+    Calculate the local energy density at every point.
+
+    :param e_field: Electric field
+    :type e_field: np.array
+
+    :param h_field: Magnetic field
+    :type h_field: np.array
+
+    :param eps_arr: Array of epsilon values
+    :type eps_arr: np.array
+
+    :return: Local energy density
+    :rtype: np.array
     """
     e_mag = calc_field_mag(e_field)
     h_mag = calc_field_mag(h_field)

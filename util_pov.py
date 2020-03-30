@@ -1,25 +1,26 @@
-########## SUMMARY OF CONTENTS ##########
-# Functions related to camera settings, headers, 
-# finishes, and calling POV-Ray to render the device.
-#
-# A quick summary of these functions:
-# - guess_camera is never directly called by the user, executes
-#     automatically if user does not specify some parameters
-# - color_and_finish never directly called by the user, but acts
-#     based on values specified by the user
-# - write_header_and_camera is required to generate a functional
-#     .pov file and must be explicitely called by the user
-# - render_pov generates the rendering command and defaults to
-#     calling povray and rendering the image
+"""
+Set camera, header, finishes, and call POV-Ray.
+
+A quick summary:
+  * guess_camera is never directly called by the user, executes
+    automatically if user does not specify some parameters
+  * color_and_finish never directly called by the user, but acts
+    based on values specified by the user
+  * write_header_and_camera is required to generate a functional
+    .pov file and must be explicitely called by the user
+  * render_pov generates the rendering command and defaults to
+    calling povray and rendering the image
+"""
 
 def guess_camera(device_dims, coating_dims=[0,0,0], 
         camera_style="perspective", angle=0, center=[0, 0], isosurface=False):
     """ 
-    Guesses the camera location if you have no idea what a good camera 
-    position is. Can look at the device from the side (angle = 0) or at an 
-    angle in the xy-plane (rotate around z-axis, *DEGREES* from x-axis). 
-    It has been optimized to give decent results, though fine-tuning in the
-    .pov file is always encouraged.
+    Guess the camera and light locations if this info is missing.
+
+    Can look at the device from the side (angle = 0) or at an angle in
+    the xy-plane (rotate around z-axis, *DEGREES* from x-axis).  It 
+    has been optimized to give decent results, though fine-tuning 
+    afterwards in the .pov file is encouraged.
     
     :param device_dims: Dimensions of the unit cell
     :type device_dims: list
@@ -35,16 +36,18 @@ def guess_camera(device_dims, coating_dims=[0,0,0],
                   0 will look down the x-axis at the side of the device
     :type angle: float
     
-    :param center: The center of the device, gets overwritten if isosurface=True
+    :param center: The center of the device, gets overwritten if 
+                   isosurface=True
     :type center: list
 
-    :param isosurface: Adjusts camera paramters if you rendering an isosurface. 
-                       Required because the origin is in a different location 
-                       with isosurfaces. Will overwrite any values assigned to 
-                       the center variable.
+    :param isosurface: Adjusts camera paramters if you rendering an 
+                      isosurface.  Required because the origin is in a 
+                      different location with isosurfaces. Overwrites 
+                      any values assigned to the center variable.
     :type isosurface: boolean
 
-    :return: Tuple containing the camera position, camera look at location, and the light position
+    :return: Tuple containing the camera position, camera look at 
+             location, and the light position
     :rtype: tuple
     """
     from math import sin, cos, pi
@@ -108,61 +111,69 @@ def color_and_finish(dev_string, default_color_dict, material, use_default_color
         custom_color = [0, 0.6667, 0.667, 0, 0], ior = 1, use_finish = "dull",
         custom_finish = ""):
     """ 
-    Sets the color and finish of the object and appends this to the device string.
-    The filter and transmit terms are both 0 by default.
-    Do not remove the underscore from filter_, as filter is a function in python.
-
+    Set object color and finish and return the updated string.
+    
     Users may specify their own custom color scheme or use the default, 
     which is based on the material type specified in the device file.
+
+    Color and finish is appended to the device string. 
+
+    Do not remove the underscore from filter_, as this differentiates
+    it from filter, a function in python.
 
     Available finishes: see ``use_finish``  parameter for details. 
     Specifying "material" will use the material finish (currently "Si", 
     "SiO2", or "subst") finish in order to accomodate multiple material 
     types in a device. The substrate will always have the "dull" finish.
 
-    If using the "custom" finish, the finish details must be specified in the
-    custom_finish variable or it will default to "dull".
+    If using the "custom" finish, the finish details must be specified 
+    in the custom_finish variable or it will default to "dull".
 
-    If you request one of the following finishes, the code will overwrite 
-    your transmit and filter values. If you do now want this to happen, you
-    should declare your own custom finish.
+    The filter and transmit terms are both 0 by default, with the 
+    exception of types requiring transparency, e.g. glass. If you 
+    request one of those finishes, the code will overwrite your 
+    transmit and filter values. If you do now want this to happen, 
+    you should declare your own custom finish.
 
     :param dev_string: String describing the device
     :type dev_string: str
 
-    :param default_color_dict: Dictionary containing the default finishes for the 
-                               various material types
+    :param default_color_dict: Dictionary containing default finishes 
+                               for the various material types
     :type default_color_dict: dict
 
-    :param use_default_colors: Boolean to select which color set to use. True will 
-                               assign colors based on the material type ("Si", 
-                               "SiO2", and "subst"). False will use user-assigned 
-                               custom colors.
+    :param use_default_colors: Boolean selects which color set to use.
+                               True will assign colors based on the 
+                               material type ("Si", "SiO2", and "subst"). 
+                               False will use user-assigned custom colors.
     :type use_default_colors: bool
 
-    :param custom_color: RGBFT values describing a single color. If you set 
-                         ``use_default_colors=False`` but forget to specify a 
-                         custom color, it will use #00aaaa (the Windows 95 
-                         default desktop color).
+    :param custom_color: RGBFT values describe a single color. If you 
+                         set ``use_default_colors=False`` but forget 
+                         to specify a custom color, it will use #00aaaa 
+                         (the Windows 95 default desktop color).
 
-                         RGB values must be in the range [0,1]. F and T are
-                         filter and transmit, respectively. F and T are 
-                         optional and both default to 0.
+                         RGB values must be in the range [0,1]. F and T
+                         are filter and transmit, respectively. They
+                         are optional and both default to 0 for most
+                         finishes.
     :type custom_color: list
 
     :param ior: Index of refraction for transparent finish only
     :type ior: float
 
-    :param use_finish: Select the finish that you want. Current options are:
+    :param use_finish: Select the finish that you want. Current options:
                        "material", "Si", "SiO2", "glass", "bright_metal", 
                        "dull_metal", "irid", "billiard", "dull", "custom"
     :type use_finish: str
 
-    :param custom_finish: User-defined custom finish. Set ``use_finish=custom``
+    :param custom_finish: User-defined custom finish. Set use_finish=custom
                           to call this option.
     :type custom_finish: str
-    """
 
+    :return: Updated device string containing color and finish settings
+    :rtype: string
+    """
     # These two values only matter for SiO2, translucent, glass, and irid finishes
     transmit, filter_ = 0, 0
 
@@ -299,8 +310,7 @@ def write_header_and_camera(device_dims, coating_dims = [0, 0, 0],
         sky = [0, 0, 1.33], bg_color = [], shadowless=False, 
         isosurface = False):
     """
-    Does exactly what the function name says. It creates a string 
-    containing the header and camera information.
+    Create a string containing the header and camera information.
 
     The minimum required input is:
     * the device dimensions (device_dims)
@@ -327,8 +337,8 @@ def write_header_and_camera(device_dims, coating_dims = [0, 0, 0],
     :param camera_style: Camera style; currently supported options are 
                          "perspective" (default), and "orthographic"; 
                          other POV-Ray camera styles may be tried if 
-                         desired, but there is no promise that they will 
-                         work as expected
+                         desired, but there is no promise that they 
+                         will work as expected
     :type camera_style: str
 
     :param camera_rotate: Rotates the camera location about the z-axis 
@@ -346,8 +356,8 @@ def write_header_and_camera(device_dims, coating_dims = [0, 0, 0],
     :param look_at: The point the camera looks at (default [0,0,0]) 
     :type look_at: list
 
-    :param light_loc: The location of the light source, can be guessed with 
-                      ``guess_camera`` (default empty)
+    :param light_loc: The location of the light source, can be guessed 
+                      with ``guess_camera`` (default empty)
     :type light_loc: list
 
     :param up_dir: Tells POV-Ray the relative height of the screen; 
@@ -364,29 +374,30 @@ def write_header_and_camera(device_dims, coating_dims = [0, 0, 0],
                 upside down (default [0, 0, 1.33])
     :type sky: list
 
-    :param bg_color: Background color as [r, g, b], where all elements are
-                     values between 0 and 1; defaults to [] (no background)
-                     to enable transparency. 
+    :param bg_color: Background color as [r, g, b], where all elements 
+                     are values between 0 and 1; defaults to [] (no 
+                     background) to enable transparency. 
     :type bg_color: list
 
     :param shadowless: Use a shadowless light source (default False)
     :type shadowless: bool
 
-    :param isosurface: Set this to True if rendering isosurfaces to account
-                       for the differing origins between S4 RCWA simulations
-                       and isosurface creation (default False)
+    :param isosurface: Set this to True if rendering isosurfaces to 
+                       account for the differing origins between S4 
+                       RCWA simulations and isosurface creation 
+                       (default False)
     :type isosurface: bool
 
-    :param camera_options: Included in the function call, but not really
-                           used in the rest of the script. It could include 
-                           the ortho angle for orthographic renderings, or
-                           options for other camera styles if necessary
+    :param camera_options: Included in the function call but not used 
+                           in the rest of the script. It could include
+                           the ortho angle for orthographic renderings
+                           renderings, or options for other camera 
+                           styles if necessary
     :type camera_options: string
 
     :return: Header information with camera, light, and background settings
     :rtype: string
     """
-
     # If camera and light source locations specified but the look_at point is
     # missing, set look_at point and leave other values alone
     # If either camera or light locations are missing, all values are filled in
@@ -447,9 +458,10 @@ def render_pov(pov_name, image_name, height, width,
         num_threads=0, open_png=True, render=True, 
         render_quality=9):
     """
-    Feeds the pov file into POV-Ray. By default it will render an 
-    image open the image post-render with eog, and print the render 
-    command to the terminal.
+    Generate the render command and feed the pov file into POV-Ray. 
+    
+    By default it will render an image open the image post-render with 
+    eog, and print the render command to the terminal.
 
     The minimum required input is:
     * the name for the generated .pov file (pov_name)
@@ -502,7 +514,6 @@ def render_pov(pov_name, image_name, height, width,
                            (default 9, POV-Ray's default)
     :type render: int
     """
-    
     from os import system
 
     command = "povray Input_File_Name={0} Output_File_Name={1} ".format(pov_name, image_name) \
