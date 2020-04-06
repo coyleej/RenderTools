@@ -86,14 +86,14 @@ def guess_camera(device_dims, coating_dims=[0,0,0],
         camera_offset *= 0.75
 
     # Guess things
-    camera_position[0] = (camera_offset + device_dims[0] + center[0]) * cos(angle)
-    camera_position[1] = (camera_offset + device_dims[0] + center[1]) * sin(angle)
-    camera_position[2] = z_scale * (device_dims[2] + 0.5 * coating_dims[2])
+    camera_position[0] = (camera_offset+device_dims[0]+center[0]) * cos(angle)
+    camera_position[1] = (camera_offset+device_dims[0]+center[1]) * sin(angle)
+    camera_position[2] = z_scale * (device_dims[2] + 0.5*coating_dims[2])
 
-    camera_look_at = [center[0], center[1], (z_lookat * device_dims[2] + 0.50 * coating_dims[2])]
+    camera_look_at = [center[0], center[1], (z_lookat*device_dims[2] + 0.50*coating_dims[2])]
 
-    light_position[0] = (device_dims[0] + light_offset) * cos(angle - 12 * deg_to_rads)
-    light_position[1] = (device_dims[1] + light_offset) * sin(angle - 12 * deg_to_rads)
+    light_position[0] = (device_dims[0]+light_offset) * cos(angle - 12*deg_to_rads)
+    light_position[1] = (device_dims[1]+light_offset) * sin(angle - 12*deg_to_rads)
     light_position[2] = camera_position[2] + light_offset/3.0
 
     if isosurface == True:
@@ -107,9 +107,9 @@ def guess_camera(device_dims, coating_dims=[0,0,0],
     return camera_position, camera_look_at, light_position
 
 
-def color_and_finish(dev_string, default_color_dict, material, use_default_colors, 
-        custom_color = [0, 0.6667, 0.667, 0, 0], ior = 1, use_finish = "dull",
-        custom_finish = ""):
+def color_and_finish(dev_string, default_color_dict, material, 
+        use_default_colors, custom_color=[0, 0.6667, 0.667, 0, 0], 
+        ior=1, use_finish="dull", custom_finish=""):
     """ 
     Set object color and finish and return the updated string.
     
@@ -182,89 +182,89 @@ def color_and_finish(dev_string, default_color_dict, material, use_default_color
         use_finish = material
 
     if use_finish == "Si" or use_finish == "silicon":
-        extra_finish = "finish \n\t\t\t{ob:c} \n\t\t\t".format(ob=123) \
-                + "diffuse 0.2 \n\t\t\t" \
-                + "brilliance 5 \n\t\t\t" \
-                + "phong 1 \n\t\t\t" \
-                + "phong_size 250 \n\t\t\t" \
-                + "roughness 0.01 \n\t\t\t" \
-                + "reflection <0.10, 0.10, 0.5> metallic \n\t\t\t" \
-                + " metallic \n\t\t\t" \
-                + "{cb:c}\n\t\t".format(cb=125) \
-                + "interior {ob:c} ior 4.24 {cb:c}\n\t\t".format(ob=123, cb=125)
+        extra_finish = (f"finish \n\t\t\t{{ \n\t\t\t"
+                + "diffuse 0.2 \n\t\t\t"
+                + "brilliance 5 \n\t\t\t"
+                + "phong 1 \n\t\t\t"
+                + "phong_size 250 \n\t\t\t"
+                + "roughness 0.01 \n\t\t\t"
+                + "reflection <0.10, 0.10, 0.5> metallic \n\t\t\t"
+                + " metallic \n\t\t\t"
+                + f"}}\n\t\t"
+                + f"interior {{ ior 4.24 }}\n\t\t")
                 # IOR taken from blender
 
     elif use_finish == "SiO2":
         filter_ = 0.98
-        extra_finish = "finish \n\t\t\t{ob:c} \n\t\t\t".format(ob=123) \
-                + "specular 0.6 \n\t\t\t" \
-                + "brilliance 5 \n\t\t\t" \
-                + "roughness 0.001 \n\t\t\t" \
-                + "reflection {ob:c} 0.0, 1.0 fresnel on {cb:c}\n\t\t\t".format(ob=123, cb=125) \
-                + "{cb:c}\n\t\t".format(cb=125) \
-                + "interior {ob:c} ior 1.45 {cb:c}\n\t\t".format(ob=123, cb=125)
+        extra_finish = (f"finish \n\t\t\t{{ \n\t\t\t"
+                + "specular 0.6 \n\t\t\t"
+                + "brilliance 5 \n\t\t\t"
+                + "roughness 0.001 \n\t\t\t"
+                + f"reflection {{ 0.0, 1.0 fresnel on }}\n\t\t\t"
+                + f"}}\n\t\t"
+                + f"interior {{ ior 1.45 }}\n\t\t")
 
     elif use_finish == "translucent":
         transmit = 0.02
         filter_ = 0.50
-        extra_finish = "finish \n\t\t\t{ob:c} \n\t\t\t".format(ob=123) \
-                + "emission 0.25 \n\t\t\t" \
-                + "diffuse 0.75 \n\t\t\t" \
-                + "specular 0.4 \n\t\t\t" \
-                + "brilliance 4 \n\t\t\t" \
-                + "reflection {ob:c} 0.5 fresnel on {cb:c}\n\t\t\t".format(ob=123, cb=125) \
-                + "{cb:c}\n\t\t".format(cb=125) \
-                + "interior {ob:c} ior {0} {cb:c}\n\t\t".format(ior, ob=123, cb=125)
+        extra_finish = (f"finish \n\t\t\t{{ \n\t\t\t"
+                + "emission 0.25 \n\t\t\t"
+                + "diffuse 0.75 \n\t\t\t"
+                + "specular 0.4 \n\t\t\t"
+                + "brilliance 4 \n\t\t\t"
+                + f"reflection {{ 0.5 fresnel on }}\n\t\t\t"
+                + f"}}\n\t\t"
+                + f"interior {{ ior {ior} }}\n\t\t")
 
     elif use_finish == "glass":
         filter_ = 0.95
-        extra_finish = "finish \n\t\t\t{ob:c} \n\t\t\t".format(ob=123) \
-                + "specular 0.6 \n\t\t\t" \
-                + "phong 0.8 \n\t\t\t" \
-                + "brilliance 5 \n\t\t\t" \
-                + "reflection {ob:c} 0.2, 1.0 fresnel on {cb:c}\n\t\t\t".format(ob=123, cb=125) \
-                + "{cb:c}\n\t\t".format(cb=125) \
-                + "interior {ob:c} ior 1.5 {cb:c}\n\t\t".format(ob=123, cb=125)
+        extra_finish = (f"finish \n\t\t\t{{ \n\t\t\t"
+                + "specular 0.6 \n\t\t\t"
+                + "phong 0.8 \n\t\t\t"
+                + "brilliance 5 \n\t\t\t"
+                + f"reflection {{ 0.2, 1.0 fresnel on }}\n\t\t\t"
+                + f"}}\n\t\t"
+                + f"interior {{ ior 1.5 }}\n\t\t")
 
     elif use_finish == "dull_metal":
-        extra_finish = "finish \n\t\t\t{ob:c} \n\t\t\t".format(ob=123) \
-                + "emission 0.1 \n\t\t\t" \
-                + "diffuse 0.1 \n\t\t\t" \
-                + "specular 1.0 \n\t\t\t" \
-                + "roughness 0.001 \n\t\t\t" \
-                + "reflection 0.5 metallic \n\t\t\t" \
-                + " metallic \n\t\t\t" \
-                + "{cb:c}\n\t\t".format(cb=125)
+        extra_finish = (f"finish \n\t\t\t{{ \n\t\t\t"
+                + "emission 0.1 \n\t\t\t"
+                + "diffuse 0.1 \n\t\t\t"
+                + "specular 1.0 \n\t\t\t"
+                + "roughness 0.001 \n\t\t\t"
+                + "reflection 0.5 metallic \n\t\t\t"
+                + " metallic \n\t\t\t"
+                + f"}}\n\t\t")
 
     elif use_finish == "bright_metal":
-        extra_finish = "finish \n\t\t\t{ob:c} \n\t\t\t".format(ob=123) \
-                + "emission 0.2 \n\t\t\t" \
-                + "diffuse 0.3 \n\t\t\t" \
-                + "specular 0.8 \n\t\t\t" \
-                + "roughness 0.01 \n\t\t\t" \
-                + "reflection 0.5 metallic \n\t\t\t" \
-                + " metallic \n\t\t\t" \
-                + "{cb:c}\n\t\t".format(cb=125)
+        extra_finish = (f"finish \n\t\t\t{{ \n\t\t\t"
+                + "emission 0.2 \n\t\t\t"
+                + "diffuse 0.3 \n\t\t\t"
+                + "specular 0.8 \n\t\t\t"
+                + "roughness 0.01 \n\t\t\t"
+                + "reflection 0.5 metallic \n\t\t\t"
+                + " metallic \n\t\t\t"
+                + f"}}\n\t\t")
 
     elif use_finish == "irid":
         filter_ = 0.7
-        extra_finish = "finish \n\t\t\t{ob:c} \n\t\t\t".format(ob=123) \
-                + "phong 0.5 \n\t\t\t" \
-                + "reflection {ob:c} 0.2 metallic {cb:c}\n\t\t\t".format(ob=123, cb=125) \
-                + "diffuse 0.3 \n\t\t\t" \
-                + "irid {ob:c} 0.75 thickness 0.5 ".format(ob=123) \
-                + "turbulence 0.5 {cb:c}\n\t\t\t".format(cb=125) \
-                + "{cb:c}\n\t\t".format(cb=125) \
-                + "interior {ob:c} ior 1.5 {cb:c}\n\t\t".format(ob=123, cb=125)
+        extra_finish = (f"finish \n\t\t\t{{ \n\t\t\t"
+                + "phong 0.5 \n\t\t\t"
+                + f"reflection {{ 0.2 metallic }}\n\t\t\t"
+                + "diffuse 0.3 \n\t\t\t"
+                + f"irid {{ 0.75 thickness 0.5 "
+                + f"turbulence 0.5 }}\n\t\t\t"
+                + f"}}\n\t\t"
+                + f"interior {{ ior 1.5 }}\n\t\t")
 
     elif use_finish == "billiard":
-        extra_finish = "finish \n\t\t\t{ob:c} \n\t\t\t".format(ob=123) \
-                + "ambient 0.3 \n\t\t\t" \
-                + "diffuse 0.8 \n\t\t\t" \
-                + "specular 0.2 \n\t\t\t" \
-                + "roughness 0.005 \n\t\t\t" \
-                + "metallic 0.5 \n\t\t\t" \
-                + "{cb:c}\n\t\t".format(cb=125)
+        extra_finish = (f"finish \n\t\t\t{{ \n\t\t\t"
+                + "ambient 0.3 \n\t\t\t"
+                + "diffuse 0.8 \n\t\t\t"
+                + "specular 0.2 \n\t\t\t"
+                + "roughness 0.005 \n\t\t\t"
+                + "metallic 0.5 \n\t\t\t"
+                + f"}}\n\t\t")
 
     elif use_finish == "custom":
         extra_finish = custom_finish
@@ -287,28 +287,27 @@ def color_and_finish(dev_string, default_color_dict, material, use_default_color
         color[3] = transmit
         color[4] = filter_
 
-    dev_string += "pigment {ob:c} ".format(ob=123) \
-            + "color rgbft " \
-            + "<{0}, {1}, {2}, {3}, {4}>".format(color[0], color[1], color[2], color[3], color[4]) \
-            + " {cb:c}\n\t\t".format(cb=125)
+#    dev_string += "pigment {ob:c} ".format(ob=123) \
+#            + "color rgbft " \
+    dev_string += (f"pigment {{ color rgbft "
+            + f"<{color[0]}, {color[1]}, {color[2]}, {color[3]}, {color[4]}>"
+            + f" }}\n\t\t")
 
     # Add the extra bits describing the finish
     #if use_finish != "dull":
     if extra_finish:
         dev_string += extra_finish 
 
-    dev_string += "{cb:c}\n\n\t".format(cb=125)
+    dev_string += f"}}\n\n\t"
 
     return dev_string
 
 
-def write_header_and_camera(device_dims, coating_dims = [0, 0, 0], 
-        camera_style = "perspective", camera_rotate = 60, 
-        camera_options = "", ortho_angle = 60, 
-        camera_loc = [], look_at = [], 
-        light_loc = [], up_dir = [0, 0, 1], right_dir = [0, 1, 0], 
-        sky = [0, 0, 1.33], bg_color = [], shadowless=False, 
-        isosurface = False):
+def write_header_and_camera(device_dims, coating_dims=[0, 0, 0], 
+        camera_style="perspective", camera_rotate=60, camera_options="", 
+        ortho_angle = 60, camera_loc=[], look_at=[], light_loc=[], 
+        up_dir=[0, 0, 1], right_dir=[0, 1, 0], sky=[0, 0, 1.33], 
+        bg_color=[], shadowless=False, isosurface=False):
     """
     Create a string containing the header and camera information.
 
@@ -410,45 +409,45 @@ def write_header_and_camera(device_dims, coating_dims = [0, 0, 0],
     # If any of the three options are still missing, take a guess at everything
     if camera_loc == [] or look_at == [] or light_loc == []:
         camera_loc, look_at, light_loc = \
-                guess_camera(device_dims, coating_dims=coating_dims, \
-                camera_style=camera_style, angle = camera_rotate, center=[0, 0],
-                isosurface = isosurface)
+                guess_camera(device_dims, coating_dims=coating_dims, 
+                camera_style=camera_style, angle = camera_rotate, 
+                center=[0, 0], isosurface = isosurface)
 
     # Handles camera style and related option(s)
     if camera_style == "":
         camera_style = "perspective"
 
     if camera_style == "orthographic":
-        camera_options = "angle {0}".format(str(ortho_angle))
+        camera_options = f"angle {ortho_angle}"
     else:
         camera_options = ""
 
     # Create POV header
     header = "#version 3.7;\n"
-    header += "global_settings {ob:c} assumed_gamma 1.0 {cb:c}\n\n".format(ob=123, cb=125)
+    header += f"global_settings {{ assumed_gamma 1.0 }}\n\n"
+#    header += "global_settings {ob:c} assumed_gamma 1.0 {cb:c}\n\n".format(ob=123, cb=125)
     
     if bg_color != []:
-        header += "background {ob:c} ".format(ob=123) \
-                + "color rgb <{0}, {1}, {2}> ".format(bg_color[0], bg_color[1], bg_color[2]) \
-                + "{cb:c}\n\n".format(cb=125) \
+        header += ("background {{ "
+                + f"color rgb <{bg_color[0]}, {bg_color[1]}, {bg_color[2]}> "
+                + "}}\n\n")
 
-    header += "camera \n\t{ob:c}\n\t".format(ob=123) \
-            + "{0} {1} \n\t".format(camera_style, camera_options) \
-            + "location <{0}, {1}, {2}>\n\t".format(camera_loc[0], camera_loc[1], camera_loc[2]) \
-            + "look_at <{0}, {1}, {2}>\n\t".format(look_at[0], look_at[1], look_at[2]) \
-            + "up <{0}, {1}, {2}>\n\t".format(up_dir[0], up_dir[1], up_dir[2]) \
-            + "right <{0}, {1}, {2}>\n\t".format(right_dir[0], right_dir[1], right_dir[2]) \
-            + "sky <{0}, {1}, {2}>\n\t".format(sky[0], sky[1], sky[2]) \
-            + "{cb:c}\n\n".format(cb=125)
+    header += (f"camera \n\t{{\n\t"
+            + f"{camera_style} {camera_options} \n\t"
+            + f"location <{camera_loc[0]}, {camera_loc[1]}, {camera_loc[2]}>\n\t"
+            + f"look_at <{look_at[0]}, {look_at[1]}, {look_at[2]}>\n\t"
+            + f"up <{up_dir[0]}, {up_dir[1]}, {up_dir[2]}>\n\t"
+            + f"right <{right_dir[0]}, {right_dir[1]}, {right_dir[2]}>\n\t"
+            + f"sky <{sky[0]}, {sky[1]}, {sky[2]}>\n\t}}\n\n")
 
-    header += "light_source \n\t{ob:c} \n\t".format(ob=123) \
-            + "<{0}, {1}, {2}> \n\t".format(light_loc[0], light_loc[1], light_loc[2]) \
-            + "color rgb <1.0,1.0,1.0> \n\t"
+    header += ("light_source \n\t"
+            + f"{{\n\t<{light_loc[0]}, {light_loc[1]}, {light_loc[2]}> \n\t"
+            + "color rgb <1.0,1.0,1.0> \n\t")
 
     if shadowless:
         header += "shadowless \n\t"
 
-    header += "{cb:c}\n\n".format(cb=125)
+    header += f"}}\n\n"
 
     return header
 
@@ -516,8 +515,9 @@ def render_pov(pov_name, image_name, height, width,
     """
     from os import system
 
-    command = "povray Input_File_Name={0} Output_File_Name={1} ".format(pov_name, image_name) \
-            + "+H{0} +W{1}".format(height, width)
+    command = (f"povray Input_File_Name={pov_name} "
+            + f"Output_File_Name={image_name} "
+            + f"+H{height} +W{width}")
 
     if display:
         command += " Display=on"
@@ -531,12 +531,12 @@ def render_pov(pov_name, image_name, height, width,
         command += " +A"
 
     if num_threads != 0:
-        command += " +WT{0}".format(num_threads)
+        command += f" +WT{num_threads}"
 
     if render_quality != 9:
         if render_quality not in range(0,12):
             render_quality = 9
-        command += " +Q{0}".format(int(render_quality))
+        command += f" +Q{render_quality}"
 
         # POV-Ray image quality options:
         # 0, 1      Just show quick colors. Use full ambient lighting only. 
@@ -556,13 +556,13 @@ def render_pov(pov_name, image_name, height, width,
 
     div = '----------------------------------------------------'
 
-    print("For additional rendering options, see POV-Ray\'s documentation,")
+    print("For additional rendering options, see POV-Ray's documentation,")
     print("particularly the file output and tracing options:")
     print("http://wiki.povray.org/content/Reference:File_Output_Options")
     print("http://wiki.povray.org/content/Reference:Tracing_Options")
 
     div = '----------------------------------------------------'
-    print("write_POV: Render with: \n{0}\n{1}\n{0}".format(div,command))
+    print(f"write_POV: Render with: \n{div}\n{command}\n{div}")
 
     return
 

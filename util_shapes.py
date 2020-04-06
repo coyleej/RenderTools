@@ -44,14 +44,14 @@ def create_cylinder(center, end, radius, for_silo=False):
     :return: POV-Ray code describing the cylinder
     :rtype: string
     """
-    cyl_string = "cylinder \n\t\t{ob:c}\n\t\t ".format(ob=123) \
-            + "<{0}, {1}, {2:.5f}>, \n\t\t".format(center[0], center[1], end[0]) \
-            + "<{0}, {1}, {2:.5f}>, \n\t\t".format(center[0], center[1], end[1]) 
+    cyl_string = (f"cylinder \n\t\t{{\n\t\t "
+            + f"<{center[0]}, {center[1]}, {end[0]:.5f}>, \n\t\t"
+            + f"<{center[0]}, {center[1]}, {end[1]:.5f}>, \n\t\t")
 
     if for_silo:
-        cyl_string += "{0} {cb:c}\n\t\t".format(radius, cb=125)
+        cyl_string += f"{radius} }}\n\t\t"
     else:
-        cyl_string += "{0}\n\t\t".format(radius)
+        cyl_string += f"{radius}\n\t\t"
 
     return cyl_string
 
@@ -78,15 +78,17 @@ def create_ellipse(center, end, halfwidths, angle=0, for_silo=False):
     :return: POV-Ray code describing the elliptical cylinder
     :rtype: string
     """
-    ellipse_string = "cylinder \n\t\t{ob:c}\n\t\t ".format(ob=123) \
-            + "<{0}, {1}, {2:.5f}>, \n\t\t".format(center[0], center[1], end[0]) \
-            + "<{0}, {1}, {2:.5f}>, 1 \n\t\t".format(center[0], center[1], end[1]) \
-            + "scale <{0}, {1}, 1> \n\t\t".format(halfwidths[0], halfwidths[1])
+    # Added radius=1 because it was omitted for some reason
+    ellipse_string = (f"cylinder \n\t\t{{\n\t\t "
+            + f"<{center[0]}, {center[1]}, {end[0]:.5f}>, \n\t\t"
+            + f"<{center[0]}, {center[1]}, {end[1]:.5f}>, \n\t\t"
+            + f"1\n\t\t"
+            + f"scale <{halfwidths[0]}, {halfwidths[1]}, 1>\n\t\t")
 
     if angle != 0:      # in degrees
-        ellipse_string += "rotate <0, 0, {0}> \n\t\t".format(angle)
+        ellipse_string += f"rotate <0, 0, {angle}> \n\t\t"
     if for_silo:
-        ellipse_string += "{cb:c}\n\t\t".format(cb=125)
+        ellipse_string += f"}}\n\t\t"
 
     return ellipse_string
 
@@ -113,21 +115,27 @@ def create_rectangle(center, end, halfwidths, angle=0, for_silo=False):
     :return: POV-Ray code describing the box
     :rtype: string
     """
-    rect_string = "box\n\t\t{ob:c}\n\t\t".format(ob=123) \
-            + "<{0}, ".format(center[0] - halfwidths[0]) \
-            + "{0}, {1:.5f}>\n\t\t".format((center[1] - halfwidths[1]), end[0]) \
-            + "<{0} ".format(center[0] + halfwidths[0]) \
-            + "{0}, {1:.5f}>\n\t\t".format((center[1] + halfwidths[1]), end[1])
+    rect_string = (f"box\n\t\t{{\n\t\t"
+            + "<{(center[0] - halfwidths[0])}, "
+            + "{(center[1]-halfwidths[1])}, {end[0]:.5f}>\n\t\t"
+            + "<{(center[0] + halfwidths[0])} "
+            + "{(center[1]+halfwidths[1])}, {end[1]:.5f}>\n\t\t")
+#            + "<{0}, ".format(center[0] - halfwidths[0]) \
+#            + "{0}, {1:.5f}>\n\t\t".format((center[1] - halfwidths[1]), end[0]) \
+#            + "<{0} ".format(center[0] + halfwidths[0]) \
+#            + "{0}, {1:.5f}>\n\t\t".format((center[1] + halfwidths[1]), end[1])
 
     if angle != 0:      # in degrees
-        rect_string += "rotate <0, 0, {0}> \n\t\t".format(angle)
+        rect_string += f"rotate <0, 0, {angle}> \n\t\t"
+
     if for_silo:
-        rect_string += "{cb:c}\n\t\t".format(cb=125)
+        rect_string += f"}}\n\t\t"
 
     return rect_string
 
 
-def create_polygon(center, end, vertices, device_dims, angle=0, for_silo=False):
+def create_polygon(center, end, vertices, device_dims, angle=0, 
+        for_silo=False):
     """ 
     Create and return povray instructions for a polygon/prism.
 
@@ -156,26 +164,27 @@ def create_polygon(center, end, vertices, device_dims, angle=0, for_silo=False):
     # The first and last point must be the same
     num_points = len(vertices) + 1
 
-    poly_string = "prism\n\t\t{ob:c}\n\t\t".format(ob=123) \
-            + "linear_sweep \n\t\tlinear_spline \n\t\t" \
-            + "{0:.5f}, {1:.5f}, {2} \n\t\t".format(end[0], end[1], num_points)
+    poly_string = (f"prism\n\t\t{{\n\t\t"
+            + "linear_sweep \n\t\tlinear_spline \n\t\t"
+            + f"{end[0]:.5f}, {end[1]:.5f}, {num_points} \n\t\t")
 
     # Must spawn prism at origin, then rotate and translate into position
     # Thanks, povray's weird coordinate system
     for i in range(len(vertices)):
         vertices[i][0] -= (center[0])
         vertices[i][1] -= (center[1])
-        poly_string += "<{0}, {1}>, ".format(vertices[i][0], vertices[i][1])
-    poly_string += "<{0}, {1}> \n\t\t".format(vertices[0][0], vertices[0][1])
+        poly_string += f"<{vertices[i][0]}, {vertices[i][1]}>, "
+    poly_string += f"<{vertices[0][0]}, {vertices[0][1]}>\n\t\t"
 
     poly_string += "rotate <90, 0, 0> \n\t\t"
-    poly_string += "translate <{0}, {1}, {2}> \n\t\t".format( \
-            (-1.0 * center[0]), (-1.0 * center[1]), (end[0] - device_dims[2]))
+    poly_string += (f"translate -<{center[0]}, -{center[1]}, "
+            + f"{(end[0]-device_dims[2])}> \n\t\t")
 
     if angle != 0:      # in degrees
-        poly_string += "rotate <0, 0, {0}> \n\t\t".format(angle)
+        poly_string += f"rotate <0, 0, {angle}> \n\t\t"
+
     if for_silo:
-        poly_string += "{cb:c}\n\t\t".format(cb=125)
+        poly_string += f"}}\n\t\t"
 
     return poly_string
 
@@ -214,27 +223,31 @@ def add_slab(lattice_vecs, thickness, device_dims, layer_type="substrate"):
     halfwidth = [(0.5 * (lattice_vecs[0][0] + lattice_vecs[1][0])),
             (0.5 * (lattice_vecs[0][1] + lattice_vecs[1][1]))]
 
-    # Curse povray's weird coordinate system, only the prism is affected by it 
+    # Curse povray's weird coordinate system, only the prism is affected
     # Must spawn at center, then rotate and translate later
     end = [(-0.5 * thickness), (0.5 * thickness)]
 
     # Defining slab vertices from lattice_vecs
-    # The shape is closed later (Povray requires that the first & last points match)
-    points = [ [0, 0],
+    # The shape is closed later 
+    # (Povray requires that the first & last points match)
+    points = [
+            [0, 0],
             [lattice_vecs[0][0], lattice_vecs[0][1]],
-            [(lattice_vecs[0][0] + lattice_vecs[1][0]), (lattice_vecs[0][1] + lattice_vecs[1][1])],
-            [lattice_vecs[1][0], lattice_vecs[1][1]] ]
+            [(lattice_vecs[0][0] + lattice_vecs[1][0]), 
+                    (lattice_vecs[0][1] + lattice_vecs[1][1])],
+            [lattice_vecs[1][0], lattice_vecs[1][1]]
+            ]
 
     # Write slab layer, adding teensy extra height to prevent weird artifacts
-    slab = "prism\n\t\t{ob:c}\n\t\t".format(ob=123) \
-            + "linear_sweep \n\t\tlinear_spline \n\t\t" \
-            + "{0}, {1}, {2} \n\t\t".format(end[0] * 1.0, end[1] * 1.000001, (len(points) + 1))
+    slab = (f"prism\n\t\t{{\n\t\t"
+            + "linear_sweep \n\t\tlinear_spline \n\t\t"
+            + f"{end[0]}, {end[1]*1.000001}, {len(points)+1} \n\t\t")
 
     for i in range(len(points)):
         points[i][0] -= halfwidth[0]
         points[i][1] -= halfwidth[1]
-        slab += "<{0:.6f}, {1:.6f}>, ".format(points[i][0], points[i][1])
-    slab += "<{0:.6f}, {1:.6f}> \n\t\t".format(points[0][0], points[0][1])
+        slab += f"<{points[i][0]:.6f}, {points[i][1]:.6f}>, "
+    slab += f"<{points[0][0]:.6f}, {points[0][1]:.6f}> \n\t\t"
 
     # Determine translation vector
     if layer_type == "coating":
@@ -255,13 +268,14 @@ def add_slab(lattice_vecs, thickness, device_dims, layer_type="substrate"):
 
     # Move slab to final location
     slab += "rotate <90, 0, 0> \n\t\t"
-    slab += "translate <{0}, {1}, {2:.6f}> \n\t\t".format( \
-            x_translate, y_translate, z_translate)
+    slab += f"translate <{x_translate}, {y_translate}, {z_translate:.6f}>"
+    slab += "\n\t\t"
 
     return slab, halfwidth
 
 
-def create_torus(major_radius, minor_radius, center, z_top, angle=0, color=[0,0,0]):
+def create_torus(major_radius, minor_radius, center, z_top, angle=0, 
+        color=[0,0,0]):
     """
     Create and return a torus for accent line functionality.
     
@@ -304,27 +318,27 @@ def create_torus(major_radius, minor_radius, center, z_top, angle=0, color=[0,0,
         smaller_dim = major_radius
         ratio = 1.0
 
-    torus = "torus\n\t\t{ob:c}\n\t\t\t".format(ob=123) \
-            + "{0}, {1}\n\t\t\t".format(smaller_dim, minor_radius) \
-            + "pigment {ob:c} color rgbft ".format(ob=123) \
-            + "<{0}, {1}, {2}, 0, 0> ".format(color[0], color[1], color[2]) \
-            + "{cb:c}\n\t\t\t".format(cb=125) \
-            + "rotate <90, 0, 0>\n\t\t\t" \
-            + "translate <{0}, {1}, {2}>\n\t\t".format(center[0], center[1], z_top)
+    torus = (f"torus\n\t\t{{\n\t\t\t"
+            + f"{smaller_dim}, {minor_radius}\n\t\t\t"
+            + f"pigment {{ color rgbft "
+            + f"<{color[0]}, {color[1]}, {color[2]}, 0, 0> "
+            + f"}}\n\t\t\t"
+            + "rotate <90, 0, 0>\n\t\t\t"
+            + f"translate <{center[0]}, {center[1]}, {z_top}>\n\t\t")
 
     # Scale dimensions to make elliptical torus
     if ratio == 0.0:
         if smaller_dim == major_radius[0]:
             ratio = major_radius[1] / major_radius[0]
-            torus += "scale <1, {0}, 1>".format(ratio)
+            torus += "scale <1, {ratio}, 1>\n\t\t\t"
         else:
             ratio = major_radius[0] / major_radius[1]
-            torus += "scale <{0}, 1, 1>\n\t\t\t".format(ratio)
+            torus += "scale <{ratio}, 1, 1>\n\t\t\t"
 
     if angle != 0:      # in degrees
-        torus += "rotate <0, 0, {0}> \n\t\t".format(angle)
+        torus += f"rotate <0, 0, {angle}> \n\t\t"
 
-    torus += "no_shadow\n\t\t{cb:c}\n\t".format(cb=125) 
+    torus += f"no_shadow\n\t\t}}\n\t"
     return torus
 
 
@@ -344,16 +358,17 @@ def create_sphere(radius, center, color=[0,0,0]):
     :return:  povray sphere description
     :rtype: string
     """
-    sphere = "sphere\n\t\t{ob:c}\n\t\t".format(ob=123) \
-            + "<{0}, {1}, {2}>, {3}\n\t\t".format(center[0], center[1], center[2], radius) \
-            + "pigment {ob:c} color rgbft ".format(ob=123) \
-            + "<{0}, {1}, {2}, 0, 0> ".format(color[0], color[1], color[2]) \
-            + "{cb:c}\n\t\t".format(cb=125) \
-            + "no_shadow\n\t\t{cb:c}\n\t".format(cb=125) 
+    sphere = (f"sphere\n\t\t{{\n\t\t"
+            + f"<{center[0]}, {center[1]}, {center[2]}>, {radius}\n\t\t"
+            + f"pigment {{ color rgbft "
+            + f"<{color[0]}, {color[1]}, {color[2]}, 0, 0> "
+            + f"}}\n\t\t"
+            + f"no_shadow\n\t\t}}\n\t")
     return sphere
 
 
-def add_accent_lines(shape, z_top, center, dims, feature_height, angle=0, line_thickness=0.0020, color=[0,0,0]):
+def add_accent_lines(shape, z_top, center, dims, feature_height, angle=0, 
+        line_thickness=0.0020, color=[0,0,0]):
     """
     Generate and return feature accent lines.
     
@@ -382,7 +397,7 @@ def add_accent_lines(shape, z_top, center, dims, feature_height, angle=0, line_t
                            rectangles and polygons)
     :type feature_height: float
 
-    :param line_thickness: Thickness of the line to add (default 0.0025)
+    :param line_thickness: Thickness of the line to add (default 0.0020)
     :type line_thickness: float
 
     :param line_color: Color of line to add, as rgb (default [0,0,0], aka black)
@@ -405,15 +420,21 @@ def add_accent_lines(shape, z_top, center, dims, feature_height, angle=0, line_t
 
     if shape == "circle":
         # dims is the radius
-        line_upper = create_torus(dims, line_thickness, center, z_top, angle=0, color=color)
-        line_lower = create_torus(dims, line_thickness, center, (z_top - feature_height), angle=0, color=color)
+        line_upper = create_torus(
+                dims, line_thickness, center, z_top, angle=0, color=color)
+        line_lower = create_torus(
+                dims, line_thickness, center, (z_top - feature_height), 
+                angle=0, color=color)
         line += line_upper
         line += line_lower
 
     elif shape == "ellipse":
         # dims is the halfwidths
-        line_upper = create_torus(dims, line_thickness, center, z_top, angle=angle, color=color)
-        line_lower = create_torus(dims, line_thickness, center, (z_top - feature_height), angle=angle, color=color)
+        line_upper = create_torus(
+                dims, line_thickness, center, z_top, angle=angle, color=color)
+        line_lower = create_torus(
+                dims, line_thickness, center, (z_top - feature_height), 
+                angle=angle, color=color)
         line += line_upper
         line += line_lower
 
@@ -431,26 +452,23 @@ def add_accent_lines(shape, z_top, center, dims, feature_height, angle=0, line_t
         # but are then rotated into place, parallel to the axes
         x_cyl = "#declare Xcyl = "
         x_cyl += create_cylinder([0.0, 0.0], x_limits, line_thickness)
-        x_cyl += "pigment {ob:c} color rgbft ".format(ob=123) \
-                + "<{0}, {1}, {2}, 0, 0> ".format(color[0], color[1], color[2]) \
-                + "{cb:c}\n\t\t".format(cb=125) \
-                + "rotate <0, 90, 0>\n\t\t".format(angle) \
-                + "no_shadow\n\t\t{cb:c}\n\t".format(cb=125)
+        x_cyl += (f"pigment {{ color rgbft "
+                + f"<{color[0]}, {color[1]}, {color[2]}, 0, 0> }}\n\t\t"
+                + "rotate <0, 90, 0>\n\t\t"
+                + f"no_shadow\n\t\t}}\n\t")
 
         y_cyl = "#declare Ycyl = "
         y_cyl += create_cylinder([0.0, 0.0], y_limits, line_thickness)
-        y_cyl += "pigment {ob:c} color rgbft ".format(ob=123) \
-                + "<{0}, {1}, {2}, 0, 0> ".format(color[0], color[1], color[2]) \
-                + "{cb:c}\n\t\t".format(cb=125) \
-                + "rotate <90, 0, 0>\n\t\t".format(angle) \
-                + "no_shadow\n\t\t{cb:c}\n\t".format(cb=125)
+        y_cyl += (f"pigment {{ color rgbft "
+                + f"<{color[0]}, {color[1]}, {color[2]}, 0, 0> }}\n\t\t"
+                + "rotate <90, 0, 0>\n\t\t"
+                + f"no_shadow\n\t\t}}\n\t")
 
         z_cyl = "#declare Zcyl = "
         z_cyl += create_cylinder([0.0, 0.0], z_limits, line_thickness)
-        z_cyl += "pigment {ob:c} color rgbft ".format(ob=123) \
-                + "<{0}, {1}, {2}, 0, 0> ".format(color[0], color[1], color[2]) \
-                + "{cb:c}\n\t\t".format(cb=125) \
-                + "no_shadow\n\t\t{cb:c}\n\t".format(cb=125)
+        z_cyl += (f"pigment {{ color rgbft "
+                + f"<{color[0]}, {color[1]}, {color[2]}, 0, 0> }}\n\t\t"
+                + f"no_shadow\n\t\t}}\n\t")
 
         # Create spheres to fill corners to cover rough cylinder ends
         sph = "#declare Corner = "
@@ -475,35 +493,38 @@ def add_accent_lines(shape, z_top, center, dims, feature_height, angle=0, line_t
             vector1 = y_limits[ii] * sin(radians(angle))
             vector2 = -1.0 * y_limits[ii] * cos(radians(angle))
             for jj in range(2):
-                line += "object {ob:c} Xcyl ".format(ob=123) \
-                        + "rotate <{0}, {1}, {2:.6f}>\n\t\t".format(0, 0, angle) \
-                        + "translate " \
-                        + "<{0:.6f}, {1:.6f}, {2:.6f}>".format(vector1, vector2, z_limits[jj]) \
-                        + "{cb:c}\n\t".format(cb=125)
+                line += (f"object {{ Xcyl "
+                        + f"rotate <0, 0, {angle:.6f}>\n\t\t"
+                        + "translate "
+                        + f"<{vector1:.6f}, {vector2:.6f}, {z_limits[jj]:.6f}>"
+                        + f"}}\n\t")
 
             vector1 = x_limits[ii] * cos(radians(angle))
             vector2 = x_limits[ii] * sin(radians(angle))
             for jj in range(2):
-                line += "object {ob:c} Ycyl ".format(ob=123) \
-                        + "rotate <{0}, {1}, {2:.6f}>\n\t\t".format(0, 0, angle) \
-                        + "translate " \
-                        + "<{0:.6f}, {1:.6f}, {2:.6f}>".format(vector1, vector2, z_limits[jj]) \
-                        + "{cb:c}\n\t".format(cb=125)
+                line += (f"object {{ Ycyl "
+                        + f"rotate <0, 0, {angle:.6f}>\n\t\t"
+                        + "translate "
+                        + f"<{vector1:.6f}, {vector2:.6f}, {z_limits[jj]:.6f}>"
+                        + f"}}\n\t")
+#                        + "<{0:.6f}, {1:.6f}, {2:.6f}>".format(vector1, vector2, z_limits[jj]) \
 
         # Zcyl, Corner
         for x in x_limits:
             for y in y_limits:
                 vector1 = x * cos(radians(angle)) - y * sin(radians(angle))
                 vector2 = y * cos(radians(angle)) + x * sin(radians(angle))
-                line += "object {ob:c} Zcyl ".format(ob=123) \
-                        + "translate " \
-                        + "<{0:.6f}, {1:.6f}, {2:.6f}>".format(vector1, vector2, 0.0) \
-                        + "{cb:c}\n\t".format(cb=125)
+                line += (f"object {{ Zcyl "
+                        + "translate "
+                        + f"<{vector1:.6f}, {vector2:.6f}, {0:.6f}>"
+                        + f"}}\n\t")
+#                        + "<{0:.6f}, {1:.6f}, {2:.6f}>".format(vector1, vector2, 0.0) \
                 for z in z_limits:
-                    line += "object {ob:c} Corner ".format(ob=123) \
-                            + "translate " \
-                            + "<{0:.6f}, {1:.6f}, {2:.6f}>".format(vector1, vector2, z) \
-                            + "{cb:c}\n\t".format(cb=125)
+                    line += (f"object {{ Corner "
+                            + "translate "
+                            + f"<{vector1:.6f}, {vector2:.6f}, {z:.6f}>"
+                            + f"}}\n\t")
+#                            + "<{0:.6f}, {1:.6f}, {2:.6f}>".format(vector1, vector2, z) \
 
         print("WARNING: add_accent_lines NOT FULLY TESTED!!!")
         print("It is NOT guaranteed to work with rectangles not centered at origin!!!")
@@ -519,12 +540,14 @@ def add_accent_lines(shape, z_top, center, dims, feature_height, angle=0, line_t
         sph += create_sphere(line_thickness, [0.0, 0.0, 0.0], color=[0,0,0])
 
         # Create cylinder along z axis
+        # Not used (yet) because I've not yet come up with an algorithm
+        # that can intelligently place them only where they make sense.
         z_cyl = "#declare Zcyl = "
         z_cyl += create_cylinder([0.0, 0.0], z_limits, line_thickness)
-        z_cyl += "pigment {ob:c} color rgbft ".format(ob=123) \
-                + "<{0}, {1}, {2}, 0, 0> ".format(color[0], color[1], color[2]) \
-                + "{cb:c}\n\t\t".format(cb=125) \
-                + "no_shadow\n\t\t{cb:c}\n\t".format(cb=125)
+        z_cyl += (f"pigment {{ color rgbft "
+                + f"<{color[0]}, {color[1]}, {color[2]}, 0, 0> "
+                + f"}}\n\t\t"
+                + f"no_shadow\n\t\t}}\n\t")
 
         # Declaring shapes
         line = sph
@@ -550,10 +573,10 @@ def add_accent_lines(shape, z_top, center, dims, feature_height, angle=0, line_t
             for z in z_limits:
 
                 # Add a sphere to the first of the two end points
-                line += "object {ob:c} Corner ".format(ob=123) \
-                        + "translate " \
-                        + "<-{0:.6f}, -{1:.6f}, {2:.6f}>".format(end1[0], end1[1], z) \
-                        + "{cb:c}\n\t".format(cb=125)
+                line += (f"object {{ Corner "
+                        + "translate "
+                        + f"<-{end1[0]:.6f}, -{end1[1]:.6f}, {z:.6f}>"
+                        + f"}}\n\t")
 
                 # Add cylinders for bigger straight lines
 
@@ -572,23 +595,25 @@ def add_accent_lines(shape, z_top, center, dims, feature_height, angle=0, line_t
                 # parallel to the z-axis. I'm sick of trying to rotate
                 # things in POV-Ray's left-handed coordinate system.
                 if cyl_length > line_thickness:
-                    line += "cylinder \n\t\t{ob:c}\n\t\t ".format(ob=123) \
-                            + "<-{0}, -{1}, {2:.5f}>, \n\t\t".format(end1[0], end1[1], z) \
-                            + "<-{0}, -{1}, {2:.5f}>, \n\t\t".format(end2[0], end2[1], z)
-                    line += "{0}\n\t\t".format(line_thickness)
-                    line += "pigment {ob:c} color rgbft ".format(ob=123) \
-                            + "<{0}, {1}, {2}, 0, 0> ".format(color[0], color[1], color[2]) \
-                            + "{cb:c}\n\t\t".format(cb=125) \
-                            + "no_shadow\n\t\t{cb:c}\n\t".format(cb=125)
+                    line += (f"cylinder \n\t\t{{\n\t\t "
+                            + f"<-{end1[0]}, -{end1[1]}, {z:.5f}>, \n\t\t"
+                            + f"<-{end2[0]}, -{end2[1]}, {z:.5f}>, \n\t\t")
+                    line += f"{line_thickness}\n\t\t"
+                    line += (f"pigment {{ color rgbft "
+                            + f"<{color[0]}, {color[1]}, {color[2]}, 0, 0>"
+                            + f"}}\n\t\t"
+                            + f"no_shadow\n\t\t}}\n\t")
 
-#            # Add vertical lines to the first end point
-#            line += "object {ob:c} Zcyl ".format(ob=123) \
-#                    + "translate " \
-#                    + "<{0:.6f}, {1:.6f}, {2:.6f}>".format(vector1, vector2, 0.0) \
-#                    + "{cb:c}\n\t".format(cb=125)
+#            # Add vertical lines 
+#            # Again, not used because there's not a way to only place
+#            # them where it makes sense
+#            line += (f"object {{ Zcyl "
+#                    + "translate "
+#                    + f"<{vector1:.6f}, {vector2:.6f}, {0:.6f}>"
+#                    + f"}}\n\t")
 
     print("WARNING: add_accent_lines NOT FULLY TESTED!!!")
-    print("It is NOT guaranteed to work with rectangles/prisms not centered at origin!!!")
+    print("NOT guaranteed to work with rectangles not centered at origin!!!")
 
     return line
 
@@ -627,7 +652,7 @@ def update_device_dims(device_dims, new_x, new_y, new_z):
 
 def write_circle_feature(shapes, k, device_dims, end, default_color_dict,
         use_default_colors, custom_colors, c, use_finish, custom_finish,
-        add_lines = False):
+        add_lines=False):
     """
     Creates a circle feature within a layer, complete with color and
     finish specifications.
@@ -715,7 +740,7 @@ def write_circle_feature(shapes, k, device_dims, end, default_color_dict,
 
 def write_ellipse_feature(shapes, k, device_dims, end, default_color_dict,
         use_default_colors, custom_colors, c, use_finish, custom_finish,
-        add_lines = False):
+        add_lines=False):
     """
     Create an ellipse feature within a layer, complete with color and
     finish specifications.
@@ -761,8 +786,8 @@ def write_ellipse_feature(shapes, k, device_dims, end, default_color_dict,
                        "dull_metal", "irid", "billiard", "dull", "custom"
     :type use_finish: str
 
-    :param custom_finish: User-defined custom finish. Set use_finish=custom
-                          to call this option.
+    :param custom_finish: User-defined custom finish. Set 
+                          use_finish=custom to call this option.
     :type custom_finish: str
 
     :param add_lines: Option to add the accent lines to the feature
@@ -798,14 +823,15 @@ def write_ellipse_feature(shapes, k, device_dims, end, default_color_dict,
                 halfwidths, (end[1]-end[0]), angle=angle)
         ellipse += lines
 
-    device_dims = update_device_dims(device_dims, halfwidths[0], halfwidths[1], 0)
+    device_dims = update_device_dims(
+            device_dims, halfwidths[0], halfwidths[1], 0)
 
     return ellipse, c, device_dims
 
 
 def write_rectangle_feature(shapes, k, device_dims, end, default_color_dict,
         use_default_colors, custom_colors, c, use_finish, custom_finish,
-        add_lines = False):
+        add_lines=False):
     """
     Creates a rectangle feature within a layer, complete with color and
     finish specifications.
@@ -828,8 +854,9 @@ def write_rectangle_feature(shapes, k, device_dims, end, default_color_dict,
 
     :param use_default_colors: Boolean selects which color set to use.
                                True will assign colors based on the 
-                               material type ("Si", "SiO2", and "subst"). 
-                               False will use user-assigned custom colors.
+                               material type ("Si", "SiO2", and 
+                               "subst").  False will use user-assigned 
+                               custom colors.
     :type use_default_colors: bool
 
     :param custom_color: RGBFT values describe a single color. If you 
@@ -847,12 +874,13 @@ def write_rectangle_feature(shapes, k, device_dims, end, default_color_dict,
     :type c: int
 
     :param use_finish: Select the finish that you want. Current options:
-                       "material", "Si", "SiO2", "glass", "bright_metal",
-                       "dull_metal", "irid", "billiard", "dull", "custom"
+                       "material", "Si", "SiO2", "glass", 
+                       "bright_metal", "dull_metal", "irid", 
+                       "billiard", "dull", "custom"
     :type use_finish: str
 
-    :param custom_finish: User-defined custom finish. Set use_finish=custom
-                          to call this option.
+    :param custom_finish: User-defined custom finish. Set 
+                          use_finish=custom to call this option.
     :type custom_finish: str
 
     :param add_lines: Option to add the accent lines to the feature
@@ -888,14 +916,15 @@ def write_rectangle_feature(shapes, k, device_dims, end, default_color_dict,
                 halfwidths, (end[1]-end[0]), angle=angle)
         rectangle += lines
 
-    device_dims = update_device_dims(device_dims, halfwidths[0], halfwidths[1], 0)
+    device_dims = update_device_dims(
+            device_dims, halfwidths[0], halfwidths[1], 0)
 
     return rectangle, c, device_dims
 
 
 def write_polygon_feature(shapes, k, device_dims, end, default_color_dict,
         use_default_colors, custom_colors, c, use_finish, custom_finish,
-        add_lines = False):
+        add_lines=False):
     """
     Create a polygon feature, with color and finish.
 
@@ -958,8 +987,6 @@ def write_polygon_feature(shapes, k, device_dims, end, default_color_dict,
     from util import deep_access
     from util_pov import color_and_finish
 
-    print("WARNING: create_polygon function has not been tested!!")
-    print("The substrate is an example of a working povray prism!")
     material = deep_access(shapes, [str(k), 'material'])
     center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
     angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
@@ -986,17 +1013,12 @@ def write_polygon_feature(shapes, k, device_dims, end, default_color_dict,
         x_max = max(abs(x_max), vertex[0])
         y_max = max(abs(y_max), vertex[1])
 
-    # Not sure why Kerry is tracking polygon halfwidths in her stuff.
-    # Halfwidths only matter for rectangles and ellipses.
-    # (It was here only as a copy-pasta error on my part.)
-    # The shape should be fully specifed by the center and vertices.
+    polygon = ("// Polygon\n\t"
+            + create_polygon(center, end, vertices, device_dims, angle=0))
 
-    polygon = "// Polygon\n\t" \
-            + create_polygon(center, end, vertices, device_dims, angle=0)
-
-    polygon = color_and_finish(polygon, default_color_dict, material, \
-            use_default_colors, custom_color = custom_colors[c], \
-            use_finish = use_finish, custom_finish = custom_finish)
+    polygon = (color_and_finish(polygon, default_color_dict, material,
+            use_default_colors, custom_color = custom_colors[c],
+            use_finish = use_finish, custom_finish = custom_finish))
 
     # Increments through custom color list
     if not use_default_colors:
@@ -1007,8 +1029,6 @@ def write_polygon_feature(shapes, k, device_dims, end, default_color_dict,
         lines = add_accent_lines("polygon", device_dims[2], center, 
                 vertices, (end[1]-end[0]), angle=angle)
         polygon += lines
-
-        print("\nWARNING: add_accent_lines does not support polygons at this time!\n")
 
     device_dims = update_device_dims(device_dims, x_max, y_max, 0)
 
@@ -1040,12 +1060,20 @@ def check_for_false_silos(shapes, layer_type):
             layer_shape = deep_access(shapes, [str(iii+1), 'shape'])
 
             # Checks shapes containing radii for zero dimensions
-            if layer_shape == "circle" and deep_access(shapes, [str(iii+1), 'shape_vars', 'radius']) == 0:
-                print("Warning: Ignoring vacuum layer with dimensions equal to zero")
+            if layer_shape == "circle" and deep_access(
+                    shapes, [str(iii+1), 'shape_vars', 'radius']) == 0:
+                print("Warning: Ignoring vacuum with dimensions equal to zero")
 
             # Checks shapes containing halfwidths for zero dimensions         
-            elif layer_shape in ["ellipse", "rectangle"] and deep_access(shapes, [str(iii+1), 'shape_vars', 'halfwidths']) == [0, 0]:
-                print("Warning: Ignoring vacuum layer with dimensions equal to zero")
+            elif layer_shape in ["ellipse", "rectangle"] and deep_access(
+                    shapes, [str(iii+1), 'shape_vars', 'halfwidths']) == [0, 0]:
+                print("Warning: Ignoring vacuum with dimensions equal to zero")
+
+            # Checks that polygons have at least 3 points
+            elif layer_shape == "polygon" and len(deep_access(
+                    shapes, [str(iii+1), 'shape_vars', 'vertices'])) < 3:
+                print("Warning: Ignoring vacuum with dimensions equal to zero")
+                print("WARNING: Polygon false silo test has not been tested!")
 
             # Is actually a silo
             else:
@@ -1054,9 +1082,9 @@ def check_for_false_silos(shapes, layer_type):
     return layer_type
 
 
-def write_silo_feature(shapes, k, layer_type, device_dims, end, default_color_dict,
-        use_default_colors, custom_colors, c, use_finish, custom_finish,
-        add_lines = False):
+def write_silo_feature(shapes, k, layer_type, device_dims, end, 
+        default_color_dict, use_default_colors, custom_colors, c, use_finish,
+        custom_finish, add_lines=False):
     """
     Create a silo feature, with color and finish.
 
@@ -1123,7 +1151,7 @@ def write_silo_feature(shapes, k, layer_type, device_dims, end, default_color_di
     material = deep_access(shapes, [str(k), 'material'])
 
     device = "// Silo\n\t" \
-            + "difference \n\t\t{ob:c}\n\t\t".format(ob=123)
+            + f"difference \n\t\t{{\n\t\t"
 
     # First shape
     if deep_access(shapes, [str(k), 'shape']) == "circle":
@@ -1156,7 +1184,8 @@ def write_silo_feature(shapes, k, layer_type, device_dims, end, default_color_di
         hw = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
         halfwidths = [hw.get("x"), hw.get("y")]
         angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
-        device += create_rectangle(center, end, halfwidths, angle, for_silo=True)
+        device += create_rectangle(
+                center, end, halfwidths, angle, for_silo=True)
         print("WARNING: this function has not been tested in silos!!")
 
         # Set up for add_lines=True, even if not actually used
@@ -1164,18 +1193,22 @@ def write_silo_feature(shapes, k, layer_type, device_dims, end, default_color_di
         dims_outer = deepcopy(halfwidths)
 
     elif deep_access(shapes, [str(k), 'shape']) == "polygon":
-        print("WARNING: create_polygon function has not been tested!!")
-
         material = deep_access(shapes, [str(k), 'material'])
         center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
-        hw = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
-        halfwidths = [hw.get("x"), hw.get("y")]
         angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
-        device += create_polygon(center, end, vertices, device_dims, angle, for_silo=True)
+        points = deep_access(shapes, [str(k), 'shape_vars', 'vertices'])
+        vertices = []
+        for k in range(len(points)):
+            vertex = [deep_access(points, [f"{k}", "x"]),
+                    deep_access(points, [f"{k}", "y"])]
+            vertices.append(vertex)
+        device += create_polygon(
+                center, end, vertices, device_dims, angle, for_silo=True)
+        print("WARNING: this function has not been tested in silos!!")
 
         # Set up for add_lines=True, even if not actually used
         shape = "polygon"
-        dims_outer = deepcopy(someVar)
+        dims_outer = deepcopy(vertices)
 
     else:
         print("ERROR: This shape is not supported!!")
@@ -1203,12 +1236,13 @@ def write_silo_feature(shapes, k, layer_type, device_dims, end, default_color_di
             dims_inner = deepcopy(radius)
 
         elif deep_access(shapes, [str(j), 'shape']) == "ellipse":
-            material = deep_access(shapes, [str(k), 'material'])
+            #material = deep_access(shapes, [str(k), 'material'])
             center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
             hw = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
             halfwidths = [hw.get("x"), hw.get("y")]
             angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
-            device += create_ellipse(center, end2, halfwidths, angle, for_silo=True)
+            device += create_ellipse(
+                    center, end2, halfwidths, angle, for_silo=True)
             print("WARNING: this function has not been tested in silos!!")
 
             # Set up for add_lines=True, even if not actually used
@@ -1216,12 +1250,13 @@ def write_silo_feature(shapes, k, layer_type, device_dims, end, default_color_di
             dims_inner = deepcopy(halfwidths)
 
         elif deep_access(shapes, [str(j), 'shape']) == "rectangle":
-            material = deep_access(shapes, [str(k), 'material'])
+            #material = deep_access(shapes, [str(k), 'material'])
             center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
             hw = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
             halfwidths = [hw.get("x"), hw.get("y")]
             angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
-            device += create_rectangle(center, end2, halfwidths, angle, for_silo=True)
+            device += create_rectangle(
+                    center, end2, halfwidths, angle, for_silo=True)
             print("WARNING: this function has not been tested in silos!!")
 
             # Set up for add_lines=True, even if not actually used
@@ -1229,11 +1264,23 @@ def write_silo_feature(shapes, k, layer_type, device_dims, end, default_color_di
             dims_inner = deepcopy(halfwidths)
 
         elif deep_access(shapes, [str(j), 'shape']) == "polygon":
-            print("WARNING: create_polygon function has not been tested!!")
+            i#material = deep_access(shapes, [str(k), 'material'])
+            center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
+            angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
+            points = deep_access(shapes, [str(k), 'shape_vars', 'vertices'])
+            vertices = []
+            for k in range(len(points)):
+                vertex = [deep_access(points, [f"{k}", "x"]),
+                        deep_access(points, [f"{k}", "y"])]
+                vertices.append(vertex)
+            device += create_polygon(
+                    center, end, vertices, device_dims, angle, for_silo=True)
+
+            print("WARNING: this function has not been tested in silos!!")
 
             # Set up for add_lines=True, even if not actually used
             shape = "polygon"
-            dims_inner = deepcopy(someVar)
+            dims_inner = deepcopy(vertices)
 
         else:
             print("ERROR: This shape is not supported!!")
@@ -1258,7 +1305,8 @@ def write_silo_feature(shapes, k, layer_type, device_dims, end, default_color_di
     if add_lines == True:
         device += lines
 
-    device_dims = update_device_dims(device_dims, halfwidths[0], halfwidths[1], 0)
+    device_dims = update_device_dims(
+            device_dims, halfwidths[0], halfwidths[1], 0)
 
     return device, c, device_dims
 
@@ -1294,7 +1342,7 @@ def create_device_layer(shapes, device_dims, end, thickness,
     :param use_default_colors: Boolean selects which color set to use.
                                True will assign colors based on the 
                                material type ("Si", "SiO2", and "subst"). 
-                               False will use user-assigned custom colors.
+                               False uses user-assigned custom colors.
     :type use_default_colors: bool
 
     :param custom_color: RGBFT values describe a single color. If you 
@@ -1312,11 +1360,12 @@ def create_device_layer(shapes, device_dims, end, thickness,
     :type c: int
 
     :param use_finish: Select the finish that you want. Current options:
-                       "material", "Si", "SiO2", "glass", "bright_metal",
-                       "dull_metal", "irid", "billiard", "dull", "custom"
+                       "material", "Si", "SiO2", "glass", 
+                       "bright_metal", "dull_metal", "irid", 
+                       "billiard", "dull", "custom"
     :type use_finish: str
 
-    :param custom_finish: User-defined custom finish. Set use_finish=custom
+    :param custom_finish: User-defined finish. Set use_finish=custom
                           to call this option.
     :type custom_finish: str
 
@@ -1388,9 +1437,6 @@ def create_device_layer(shapes, device_dims, end, thickness,
                     custom_finish, add_lines)
             device_layer += feature
 
-            print("WARNING: create_polygon function has not been tested!!")
-            print("The substrate is an example of a working povray prism!")
-
         elif layer_type[k] == "Vacuum":
             k = k
 
@@ -1399,21 +1445,18 @@ def create_device_layer(shapes, device_dims, end, thickness,
 
     # End of device layer (update thickness and close union
     device_dims = update_device_dims(device_dims, 0, 0, thickness)
-    device_layer += "{cb:c}\n\t".format(cb=125)
+    device_layer += f"}}\n\t"
 
     return device_layer, c, device_dims
 
 
 def create_device(device_dict, 
-    num_UC_x = 2, num_UC_y = 2, 
-    coating_layers = [], 
-    coating_color_dict = {"background":[1, 0, 0, 0, 0]}, 
-    coating_ior_dict = {"background":1.0}, 
-    use_default_colors = True, custom_colors = [[0, 0.667, 0.667, 0, 0]], 
-    use_finish = "", custom_finish = "", 
-    add_lines = False, 
-    line_thickness = 0.0025, line_color = [0, 0, 0, 0, 0],
-    display = False, render = True, num_threads = 0): #, 
+    num_UC_x=2, num_UC_y=2, coating_layers=[], 
+    coating_color_dict={"background":[1, 0, 0, 0, 0]}, 
+    coating_ior_dict={"background":1.0}, 
+    use_default_colors=True, custom_colors=[[0, 0.667, 0.667, 0, 0]], 
+    use_finish="", custom_finish="", 
+    add_lines=False, line_thickness=0.0020, line_color=[0, 0, 0, 0, 0]):
     """ 
     Generates a string containing the device information.
 
@@ -1443,12 +1486,12 @@ def create_device(device_dict,
     :param num_UC_y: Number of unit cells in the y direction (default 5)
     :type num_UC_y: int 
 
-    :param coating_layers: List containing material and thickness of each
-                           layer, starting with the bottom layer and
-                           working up
+    :param coating_layers: List containing material and thickness of 
+                           each layer, starting with the bottom layer 
+                           and working up
     :type coating_layers: list
 
-    :param bg_coating_color_dict: Dictionary containing color definitions
+    :param bg_coating_color_dict: Dictionary of color definitions
                                   for all coating layers present
     :type bg_coating_color_dict: dict
 
@@ -1460,40 +1503,40 @@ def create_device(device_dict,
     :type bg_color: list
 
     :param use_default_colors: Determine color selection: True will set 
-                               the color based on the material specified 
-                               in ``device_dict``. False allows for use of 
-                               a custom color, which is specified in 
+                               the color based on the material specified
+                               in ``device_dict``. False allows for use 
+                               of a custom color, which is specified in 
                                ``custom_color`` (default True)
     :type use_default_colors: bool
 
-    :param custom_colors: Define a list of custom RBGFT colors (each color is 
-                          a list of five values); each shape can be assigned
-                          its own color (default [[0, 0.667, 0.667, 0, 0]])
+    :param custom_colors: Define a list of custom RBGFT colors (each 
+                          color is a list of five values); each shape 
+                          can be assigned its own color 
+                          (default [[0, 0.667, 0.667, 0, 0]])
     :type custom_colors: list
 
-    :param use_finish: The finish on the device; see ``color_and_finish`` 
+    :param use_finish: The device finish; see ``color_and_finish`` 
                        for the full list of options (default "dull")
     :type use_finish: str
 
-    :param custom_finish: User-specified custom finish, see ``color_and_finish`` 
-                          for formatting (default "dull")
+    :param custom_finish: User-specified device finish (for anything
+                          not included in ``color_and_finish``; please
+                          refer to that function's docstring for 
+                          formatting info (default "dull")
     :type custom_finish: str
 
     :param add_lines: Adds lines to highlight shape edges (default False)
     :type add_lines: bool
 
-    :param line_thickness: Half-thickness of lines used when add_lines = True
-                           (default 0.0025)
+    :param line_thickness: Half-thickness of lines generated when 
+                           add_lines=True (default 0.0025)
     :type line_thickness: float
 
-    :param line_color: Color (as rgbft) of lines used when add_lines = True
+    :param line_color: Color (rgbft) of lines used when add_lines=True
                        (default [0, 0, 0, 0, 0] (opaque black))
     :type line_color: list
 
-    :param render: Tells POV-Ray to render the image (default True)
-    :type render: bool
-
-    :return: a string describing the device, updated device dimensions, 
+    :return: a string describing the device, updated device dimensions,
              and updated coating dimensions
     :rtype: tuple
     """
@@ -1547,36 +1590,43 @@ def create_device(device_dict,
     #### ---- DEVICE UNIT CELL ---- ####
 
     device += "#declare UnitCell = "
-    device += "merge\n\t{ob:c}\n\t".format(ob=123)
+    device += f"merge\n\t{{\n\t"
 
     # Create all layers
     for i in range(number_of_layers):
 
-        if deep_access(device_dict, ['statepoint', 'dev_layers', str(i)]).get('shapes') is not None:
-            shapes = deep_access(device_dict, ['statepoint', 'dev_layers', str(i), 'shapes'])
-            background = deep_access(device_dict, ['statepoint', 'dev_layers', str(i), 'background'])
-            thickness = deep_access(device_dict, ['statepoint', 'dev_layers', str(i), 'thickness'])
+        shape_type = deep_access(device_dict, 
+                ['statepoint', 'dev_layers', str(i)]).get('shapes')
+        if shape_type is not None:
+            shapes = deep_access(device_dict, 
+                    ['statepoint', 'dev_layers', str(i), 'shapes'])
+            background = deep_access(device_dict, 
+                    ['statepoint', 'dev_layers', str(i), 'background'])
+            thickness = deep_access(device_dict, 
+                    ['statepoint', 'dev_layers', str(i), 'thickness'])
             # end = [top, bottom]
-            end = [float(-1.0 * device_dims[2]), float(-1.0 * device_dims[2] - thickness)]
+            end = [float(-1.0*device_dims[2]), 
+                    float(-1.0*device_dims[2] - thickness)]
 
-            device += "union\n\t{ob:c}\n\t".format(ob=123)
+            device += f"union\n\t{{\n\t"
 
             # Check for background material
             bg_slab = ""
             #if background != "Vacuum":
             if background in coating_color_dict:
                 # Forcing elimination of internal boundaries
-                # (They appear if you use lattice_vecs instead of temp_vecs)
+                # (They appear if you use lattice_vecs 
+                # instead of temp_vecs)
                 temp_vecs = deepcopy(lattice_vecs)
                 for k in range(2):
                     for l in range(2):
                         temp_vecs[k][l] += 0.0002
 
                 device += "// Layer background\n\t"
-                bg_slab, halfwidth = add_slab(temp_vecs, thickness, device_dims, 
-                        layer_type="background")
-                bg_slab = color_and_finish(bg_slab, default_color_dict, background, 
-                        use_default_colors = False, 
+                bg_slab, halfwidth = add_slab(temp_vecs, thickness, 
+                        device_dims, layer_type="background")
+                bg_slab = color_and_finish(bg_slab, default_color_dict, 
+                        background, use_default_colors = False, 
                         custom_color = coating_color_dict[background],
                         ior = coating_ior_dict[background],
                         use_finish = "translucent")
@@ -1594,12 +1644,12 @@ def create_device(device_dict,
             device += layer
 
     # End unit cell merge
-    device += "{cb:c}\n\n".format(cb=125)
+    device += f"}}\n\n"
 
     #### ---- REPLICATE UNIT CELL ---- ####
 
     # Shift translation so that the original device is roughly in the center
-    device += "merge\n\t{ob:c} \n\t".format(ob=123)
+    device += f"merge\n\t{{ \n\t"
 
     adj_x = int(0.5 * (num_UC_x - (1 + (num_UC_x - 1) % 2)))
     adj_y = int(0.5 * (num_UC_y - (1 + (num_UC_y - 1) % 2)))
@@ -1610,10 +1660,12 @@ def create_device(device_dict,
 
     for i in range(num_UC_x):
         for j in range(num_UC_y):
-            device += "object {ob:c} UnitCell translate <{0}, {1}, {2}> {cb:c}\n\t".format( 
-                    ((i - adj_x) * lattice_vecs[0][0] - (j - adj_y) * lattice_vecs[1][0]), 
-                    ((j - adj_y) * lattice_vecs[1][1] - (i - adj_x) * lattice_vecs[0][1]), 
-                    0, ob=123, cb=125)
+            translate_x = ((i-adj_x)*lattice_vecs[0][0]
+                           - (j-adj_y)*lattice_vecs[1][0])
+            translate_y = ((j-adj_y)*lattice_vecs[1][1]
+                           - (i-adj_x)*lattice_vecs[0][1]) 
+            device += (f"object {{ UnitCell translate "
+                    + f"<{translate_x}, {translate_y}, 0> }}\n\t")
 
     #### ---- COATING AND SUBSTRATE ---- ####
 
@@ -1642,7 +1694,7 @@ def create_device(device_dict,
     # Add coatings on top of device
     if coating_layers != []:
         for j in range(len(coating_layers)):
-            device += "// Coating layer {0}\n\t".format(j + 1)
+            device += "// Coating layer {j+1}\n\t"
             coating, halfwidth = add_slab(temp_vecs, coating_layers[j][1], 
                     coating_dims, layer_type="coating")
             coating = color_and_finish(coating, default_color_dict, 
@@ -1652,17 +1704,20 @@ def create_device(device_dict,
                     use_finish = "translucent")
             device += coating
 
-            coating_dims = update_device_dims(coating_dims, 0, 0, coating_layers[j][1])
+            coating_dims = update_device_dims(
+                    coating_dims, 0, 0, coating_layers[j][1])
 
     # End device and coating merge
-    device += "{cb:c}\n\n".format(cb=125)
+    device += f"}}\n\n"
 
     # Substrate
     device += "// Substrate\n\t"
     material = "subst"
-    thickness_sub = max(1, deep_access(device_dict, ['statepoint', 'sub_layer', 'thickness']))
+    thickness_sub = max(1, deep_access(
+        device_dict, ['statepoint', 'sub_layer', 'thickness']))
 
-    substrate, halfwidth = add_slab(temp_vecs, thickness_sub, substrate_dims, layer_type="substrate")
+    substrate, halfwidth = add_slab(
+            temp_vecs, thickness_sub, substrate_dims, layer_type="substrate")
     device += substrate
 
     device = color_and_finish(device, default_color_dict, material, 
@@ -1770,7 +1825,7 @@ def isosurface_unit_cell(mesh,
     # Begin unit cell merge
     # Necessary if multiple layers or multiple features per layer
     device = "\n\n#declare UnitCell = "
-    device += "merge {ob:c}\n\t".format(ob=123)
+    device += f"merge {{\n\t"
 
     # Create all layers
     for i in range(number_of_layers):
@@ -1782,7 +1837,7 @@ def isosurface_unit_cell(mesh,
             # end = [top, bottom]
             end = [float(-1.0 * device_dims[2]), float(-1.0 * device_dims[2] - thickness)]
 
-            device += "union\n\t{ob:c}\n\t".format(ob=123)
+            device += f"union\n\t{{\n\t"
 
             # Create all features within a layer
             layer, c, device_dims = create_device_layer(shapes, device_dims,
@@ -1792,16 +1847,19 @@ def isosurface_unit_cell(mesh,
             device += layer
 
     # End unit cell merge
-    device += "{cb:c}\n\n".format(cb=125)
+    device += f"}}\n\n"
 
     # Scale unit cell up to match field dimensions
     scaling_factor = n[0] / lattice_vecs[0][0]
 
-    device += "object {ob:c} UnitCell ".format(ob=123)
+    translate_x = 0.5 * (device_dims[0] + n[0])
+    translate_y = 0.5 * (device_dims[1] + n[1])
+    translate_z = n[2] - device_dims[2]
+
+    device += f"object {{ UnitCell "
     device += "\n\tscale <{0}, {0}, {0}> ".format(scaling_factor)
-    device += "\n\ttranslate <{0}, ".format(0.5 * (device_dims[0] + n[0]))
-    device += "{0}, ".format(0.5 * (device_dims[1] + n[1]))
-    device += "{0}> \n\t{cb:c}\n\n".format(n[2] - device_dims[2], cb=125)
+    device += f"\n\ttranslate <{translate_x}, {translate_y}, {translate_z}> "
+    device += f"\n\t}}\n\n"
 
     # Can also subtract out pieces of the unit cell, 
     if use_slice_UC == True:

@@ -15,7 +15,8 @@ A quick summary of these functions:
     and/or the device unit cell
 """
 
-def create_mesh2(field, cutoffs, colormap = "viridis", transmit = 0.4, cmap_limits = ["a","b"]):
+def create_mesh2(field, cutoffs, colormap="viridis", transmit=0.4, 
+        cmap_limits=["a","b"]):
     """
     Converts any input field to one or more isosurfaces using the 
     marching cubes algorithm. Puts output into the povray mesh2
@@ -99,7 +100,7 @@ def create_mesh2(field, cutoffs, colormap = "viridis", transmit = 0.4, cmap_limi
     # Need to use union if more than one isosurface, esp. if using 
     # povray's intersection or difference functions as an option
     if len(cutoffs) > 1:
-        mesh += "\nunion {ob:c}".format(ob=123)
+        mesh += f"\nunion {{"
 
     # Loop over cutoffs
     for i in range(len(cutoffs)):
@@ -114,9 +115,9 @@ def create_mesh2(field, cutoffs, colormap = "viridis", transmit = 0.4, cmap_limi
         # values :: Value at each vertex; we don't care about these
         corners, faces, normals, values = marching_cubes_lewiner(field, cutoffs[i])
 
-        print("\nIsosurface value: {0}".format(cutoffs[i]))
-        print("{0} corners".format(len(corners)))
-        print("{0} faces".format(len(faces)))
+        print(f"\nIsosurface value: {cutoffs}")
+        print(f"{corners} corners")
+        print(f"{faces} faces")
 
 
 
@@ -145,15 +146,15 @@ def create_mesh2(field, cutoffs, colormap = "viridis", transmit = 0.4, cmap_limi
         # // Not required because the vertices and normals have the same indices
         # // POV-Ray will use the values from faces_indices
 
-        mesh += "\n\tpigment {ob:c} rgbt <".format(ob=123) \
-                + "{0:.4f}, {1:.4f}, {2:.4f}, ".format(color[0], color[1], color[2]) \
-                + "{0}> {cb:c}".format(transmit, cb=125)
+        mesh += (f"\n\tpigment {{ rgbt <"
+                + f"{color[0]:.4f}, {color[1]:.4f}, {color[2]:.4f}, "
+                + f"{transmit}> }}")
 
-        mesh += "\n\t{cb:c}".format(cb=125)
+        mesh += f"\n\t}}"
 
     # End union
     if len(cutoffs) > 1:
-        mesh += "\n{cb:c}".format(cb=125)
+        mesh += f"\n}}"
 
     return mesh
 
@@ -178,22 +179,22 @@ def write_mesh2_params(parameter, values, values_per_line=2):
     :return: Parameter data in POV-Ray mesh2 format
     :rtype: string
     """
-    param_string = "\n\t{0} {ob:c}".format(parameter, ob=123)
-    param_string += "\n\t\t{0}".format(len(values))
+    param_string = f"\n\t{parameter} {{"
+    param_string += f"\n\t\t{len(values)}"
+#    param_string += "\n\t\t{0}".format(len(values))
 
     for j in range(len(values)):
         if j % 2 == 0:
             param_string += "\n\t\t"
-        param_string += "<{0:.5f}, {1:.5f}, {2:.5f}>".format(
-            values[j][0], values[j][1], values[j][2])
+        param_string += f"<{values[j][0]:.5f}, {values[j][1]:.5f}, {values[j][2]:.5f}>"
         if j != (len(values) - 1):
             param_string += ", "
-    param_string += "\n\t\t{cb:c}".format(cb=125)
+    param_string += f"\n\t\t}}"
 
     return(param_string)
 
 
-def slice_isosurface(mesh, corner1, corner2, subtract_box = False):
+def slice_isosurface(mesh, corner1, corner2, subtract_box=False):
     """
     Slices the isosurface with a user-specified rectangular box. The
     boolean subtract_box switches between POV-Ray's intersect and
@@ -219,18 +220,17 @@ def slice_isosurface(mesh, corner1, corner2, subtract_box = False):
     :rtype: string
     """
     # Create the rectangle
-    rect_string = "\nbox {ob:c}".format(ob=123) \
-            + "\n\t<{0}, {1}, {2}>, ".format(corner1[0], corner1[1], corner1[2]) \
-            + "<{0}, {1}, {2}>".format(corner2[0], corner2[1], corner2[2])
+    rect_string = (f"\nbox {{\n\t"
+            + f"<{corner1[0]}, {corner1[1]}, {corner1[2]}>"
+            + f"<{corner2[0]}, {corner2[1]}, {corner2[2]}>")
 
     # intersection + inverse is the same as difference
     if subtract_box == True:
         rect_string += " inverse"
 
-    rect_string += "\n\t{cb:c}".format(cb=125)
+    rect_string += f"\n\t}}"
 
     # Create the intersection
-    mesh = "intersection {ob:c}".format(ob=123) + mesh
-    mesh += rect_string + "\n{cb:c}".format(cb=125)
+    mesh = f"intersection {{" + mesh +  rect_string + f"\n}}"
 
     return mesh
