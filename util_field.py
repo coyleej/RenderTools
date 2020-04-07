@@ -1,5 +1,4 @@
-"""
-Extract and manipulate numpy field data.
+"""Extract and manipulate numpy field data.
 
 Functions to extract field data from a numpy array and manipulating 
 them into a form that scikit-image's meshing tools can handle.
@@ -15,24 +14,23 @@ A quick summary of these functions:
 import numpy as np
 
 def process_field_array(field_array, center=True):
-    """
-    Extract field data and dimensionality from simulation data.
-
+    """Extract field data and dimensionality from simulation data.
+    
     POV-Ray and mayavi can't interpret the simulation's output array.
 
-    :param field_array: simulation output array indexed by
-                        [z_idx, y_idx, h_idx, E/H, (x, y, z)]
-    :type field_array: np.array
+    Args:
+      field_array(np.array): simulation output array indexed by
+          [z_idx, y_idx, h_idx, E/H, (x, y, z)]
+      center(bool, optional): whether to move the origin to the center
+          (default True)
 
-    :param center: whether to move the origin to the center 
-                   (default True)
-    :type center: bool
+    Returns:
+      tuple: Electric or magnetic field numpy array and the array
+          dimensionality as integers
 
-    :return: Electric or magnetic field numpy array and the array
-             dimensionality as integers
-    :rtype: tuple
+    Raises:
+      RuntimeError: The input array must be 5D
 
-    :raises RuntimeError: The input array must be 5D
     """
     if field_array.ndim != 5:
         raise RuntimeError("field_array must be 5D")
@@ -51,35 +49,31 @@ def process_field_array(field_array, center=True):
     return field_array, nx, ny, nz
 
 def double_roll(array, n0, n1):
-    """
-    Roll the input array along two axes and return the result.
-
+    """Roll the input array along two axes and return the result.
+    
     Required because the order of the axes is flipped between S4 and
     what both POV-Ray and mayavi expect.
 
-    :param array: array to shift. must be >= 2 dimensional
-    :type array: np.array
+    Args:
+      array(np.array): array to shift. must be >= 2 dimensional
+      n0(int): number of elements to shift along first axis
+      n1(int): number of elements to shift along second axis
 
-    :param n0: number of elements to shift along first axis
-    :type n0: int
+    Returns:
+      np.array: Copy of the input array shifted by n0, n1
 
-    :param n1: number of elements to shift along second axis
-    :type n1: int
-
-    :return: Copy of the input array shifted by n0, n1
-    "rtype: np.array
     """
     return np.copy(np.roll(np.roll(array, n0, axis=0), n1, axis=1))
 
 def extract_components(field):
-    """
-    extract the components of a field
+    """Extract the components of a field
 
-    :param field: Electric or magnetic field
-    :type field: np.array
+    Args:
+      field(np.array): Electric or magnetic field
 
-    :return: Lists the components of the field
-    :rtype: list
+    Returns:
+      list: Lists the components of the field
+
     """
     ret_list = list()
     for i in range(3):
@@ -87,15 +81,15 @@ def extract_components(field):
     return ret_list
 
 def extract_e_field(field_array):
-    """
-    Extract and return components of the electric field.
+    """Extract and return components of the electric field.
 
-    :param field_array: Electric field
-    :type field_array: np.array
+    Args:
+      field_array(np.array): Electric field
 
-    :return: Electric field vectors and their x,y,z components 
-             as np arrays
-    :rtype: tuple
+    Returns:
+      tuple: Electric field vectors and their x,y,z components
+      as np arrays
+
     """
     # obtain the raw e_field
     e_field = field_array[:, :, :, 0, :]
@@ -104,15 +98,15 @@ def extract_e_field(field_array):
     return e_field, ex, ey, ez
 
 def extract_h_field(field_array):
-    """
-    Extract and return components of the electric field.
+    """Extract and return components of the electric field.
 
-    :param field_array: Magnetic field
-    :type field_array: np.array
+    Args:
+      field_array(np.array): Magnetic field
 
-    :return: Magnetic field vectors and their x,y,z components
-             as np arrays
-    :rtype: tuple
+    Returns:
+      tuple: Magnetic field vectors and their x,y,z components
+      as np arrays
+
     """
     # obtain the raw e_field
     h_field = field_array[:, :, :, 1, :]
@@ -121,14 +115,14 @@ def extract_h_field(field_array):
     return h_field, hx, hy, hz
 
 def extract_real_components(field):
-    """
-    Extract the real components of a given field.
+    """Extract the real components of a given field.
 
-    :param field: Electric or magnetic field
-    :type field: np.array
+    Args:
+      field(np.array): Electric or magnetic field
 
-    :return: Lists the real components of the field
-    :rtype: list
+    Returns:
+      list: Lists the real components of the field
+
     """
     ret_list = list()
     for i in range(3):
@@ -136,14 +130,14 @@ def extract_real_components(field):
     return ret_list
 
 def calc_field_mag(field):
-    """
-    Calculate the magnitude of a given field.
+    """Calculate the magnitude of a given field.
 
-    :param field: Electric or magnetic field
-    :type field: np.array
+    Args:
+      field(np.array): Electric or magnetic field
 
-    :return: Field magnitude
-    :rtype: np.array
+    Returns:
+      np.array: Field magnitude
+
     """
     from util import deep_access
 
@@ -159,20 +153,16 @@ def calc_field_mag(field):
 
 
 def calc_energy_density(e_field, h_field, eps_arr):
-    """
-    Calculate the local energy density at every point.
+    """Calculate the local energy density at every point.
 
-    :param e_field: Electric field
-    :type e_field: np.array
+    Args:
+      e_field(np.array): Electric field
+      h_field(np.array): Magnetic field
+      eps_arr(np.array): Array of epsilon values
 
-    :param h_field: Magnetic field
-    :type h_field: np.array
+    Returns:
+      np.array: Local energy density
 
-    :param eps_arr: Array of epsilon values
-    :type eps_arr: np.array
-
-    :return: Local energy density
-    :rtype: np.array
     """
     e_mag = calc_field_mag(e_field)
     h_mag = calc_field_mag(h_field)

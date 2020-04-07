@@ -1,5 +1,4 @@
-"""
-Create isosurfaces.
+"""Create isosurfaces.
 
 These functions are specific to isosurface creation/rendering.
 The functions to manipulate data into the proper form are 
@@ -17,43 +16,33 @@ A quick summary of these functions:
 
 def create_mesh2(field, cutoffs, colormap="viridis", transmit=0.4, 
         cmap_limits=["a","b"]):
-    """
-    Converts any input field to one or more isosurfaces using the 
+    """Converts any input field to one or more isosurfaces using the
     marching cubes algorithm. Puts output into the povray mesh2
     format and tracks the maximum dimensions of the isosurfaces.
     Outputs the mesh2 string and the overall dimensions.
-
+    
     Minimum required input is
     * the field of interest (field)
     * the isovalues of interest (cutoffs)
-
-
+    
     #### NOTE ####
     Currently working on allowing user more control over the isosurface
     color cutoffs. Currently the colormap extremes are always set to
     the minimum and maximum values of the field.
     #### NOTE ####
 
+    Args:
+      field (numpy array): Field values to turn into isosurface
+      cutoffs (list): Isosurface values you want rendered
+      colormap (string, optional): Colormap name, defaults to "viridis"
+      transmit (float, optional): Isosurface transparency (default 0.4)
+      cmap_limits (list, optional): colormap min and max values, 
+          defaults to field extrema if element is a character (set as 
+          ["a", "b"] by default)
 
-    :param field: Field values to turn into isosurface
-    :type field: numpy array
+    Returns:
+      string: mesh2 object as a string
 
-    :param cutoffs: Isosurface values you want rendered
-    :type cutoffs: list
-
-    :param colormap: Colormap name, defaults to "viridis"
-    :type colormap: string
-
-    :param transmit: Isosurface transparency, defaults to 0.4
-    :type transmit: float
-
-    :param cmap_limits: colormap min and max values, defaults to 
-                        field extrema if element is a character 
-                        (set as ["a", "b"] by default)
-    :type cmap_limits: list
-
-    :return: mesh2 object as a string 
-    :rtype: string
     """
     import numpy as np
     from skimage.measure import marching_cubes_lewiner
@@ -160,24 +149,20 @@ def create_mesh2(field, cutoffs, colormap="viridis", transmit=0.4,
 
 
 def write_mesh2_params(parameter, values, values_per_line=2):
-    """
-    Takes parameter data and converts it into a string that POV-Ray 
+    """Takes parameter data and converts it into a string that POV-Ray
     understands.
 
-    :param parameter: One of the mesh2 specifications, e.g.
-                      "vertex_vectors", "normal_vectors", "face_indices"
-    :type parameter: string
+    Args:
+      parameter (string): One of the mesh2 specifications, e.g. 
+          "vertex_vectors", "normal_vectors", "face_indices"
+      values (list): The values for the parameter variable, each 
+          element must be a list with three values
+      values_per_line (int, optional): Only place this many values on
+          a line for readability, defaults to 2
 
-    :param values: The values for the parameter variable, each element
-                   must be a list with three values
-    :type values: list
+    Returns:
+      string: Parameter data in POV-Ray mesh2 format
 
-    :param values_per_line: Only place this many values on a line for 
-                            readability, defaults to 2
-    :type values_per_line: int
-
-    :return: Parameter data in POV-Ray mesh2 format
-    :rtype: string
     """
     param_string = f"\n\t{parameter} {{"
     param_string += f"\n\t\t{len(values)}"
@@ -195,29 +180,23 @@ def write_mesh2_params(parameter, values, values_per_line=2):
 
 
 def slice_isosurface(mesh, corner1, corner2, subtract_box=False):
-    """
-    Slices the isosurface with a user-specified rectangular box. The
-    boolean subtract_box switches between POV-Ray's intersect and
+    """Slice the isosurface with a user-specified rectangular box. 
+    
+    The boolean subtract_box switches between POV-Ray's intersect and
     difference functions, allowing you to preserve or extract a chunk.
 
-    :param mesh: The mesh2 isosurface string
-    :type parameter: string
+    Args:
+      mesh: The mesh2 isosurface string
+      corner1: A corner of the box for intersect/difference
+      corner2: The corner of the box opposite corner1
+      subtract_box: Switch between POV-Ray's intersect (if False) and
+          difference (if True) functions; intersect preserves anything
+          within the box limits, difference removes anythin within the
+          box limits (Default value = False)
 
-    :param corner1: A corner of the box for intersect/difference
-    :type parameter: list
+    Returns:
+      string: The modified mesh string
 
-    :param corner2: The corner of the box opposite corner1
-    :type parameter: list
-
-    :param subtract_box: Switch between POV-Ray's intersect (if False) 
-                         and difference (if True) functions; intersect 
-                         preserves anything within the box limits, 
-                         difference removes anythin within the box 
-                         limits
-    :type parameter: boolean
-
-    :return: The modified mesh string
-    :rtype: string
     """
     # Create the rectangle
     rect_string = (f"\nbox {{\n\t"
