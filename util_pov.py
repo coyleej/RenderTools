@@ -12,7 +12,8 @@ A quick summary:
 """
 
 def guess_camera(device_dims, coating_dims=[0,0,0], 
-        camera_style="perspective", angle=0, center=[0, 0], isosurface=False):
+        camera_style="perspective", camera_rotate =0, center=[0, 0], 
+        isosurface=False):
     """Guess the camera and light locations if this info is missing.
     
     Can look at the device from the side (angle = 0) or at an angle in
@@ -27,9 +28,10 @@ def guess_camera(device_dims, coating_dims=[0,0,0],
       camera_style (string, optional): The desired camera style, 
           currently accepts perspective and orthographic (Default 
           "perspective")
-      angle (float, optional): Rotates the camera around the z-axis 
+      camera_rotate (float, optional): Rotates the camera around the z-axis 
           (in degrees); 0 will look down the x-axis at the side of the 
           device (Default = 0)
+          #### NOTE: Renamed from "angle" to match write_pov!!! ####
       center (list, optional): The center of the device, gets over-
           written if isosurface=True (Default value = [0,0])
       isosurface(boolean, optional): Adjusts camera paramters if you 
@@ -48,7 +50,7 @@ def guess_camera(device_dims, coating_dims=[0,0,0],
     light_position = [0, 0, 0]
 
     deg_to_rads = pi / 180.0
-    angle *= deg_to_rads 
+    camera_rotate *= deg_to_rads 
 
     if camera_style == "perspective":
         x_offset = 1.2
@@ -59,7 +61,7 @@ def guess_camera(device_dims, coating_dims=[0,0,0],
     else:
         x_offset = 1.2
         z_scale = 1.0
-        print("WARNING: Camera parameters have not been optimized for this style!")
+        print("WARNING: Camera parameters are not optimized for this style!")
 
     # Offset for x,y-dimensions
     camera_offset = x_offset * (max(device_dims) + 0.8 * max(coating_dims))
@@ -68,7 +70,7 @@ def guess_camera(device_dims, coating_dims=[0,0,0],
     # Need to scale z-axis settings differently when rendering isosurfaces
     # Related to default origin position:
     # - Pure device render: top at z = 0, centered at x=y=0 by default
-    # - Isosurface (and optional unit cell) has bottom at z = 0, origin at corner
+    # - Isosurface (and optional unit cell) has bottom at z=0, origin at corner
     if isosurface == False:
         z_lookat = -0.66
     else:
@@ -78,14 +80,19 @@ def guess_camera(device_dims, coating_dims=[0,0,0],
         camera_offset *= 0.75
 
     # Guess things
-    camera_position[0] = (camera_offset+device_dims[0]+center[0]) * cos(angle)
-    camera_position[1] = (camera_offset+device_dims[0]+center[1]) * sin(angle)
+    camera_position[0] = ((camera_offset+device_dims[0]+center[0])
+                          * cos(camera_rotate))
+    camera_position[1] = ((camera_offset+device_dims[0]+center[1])
+                          * sin(camera_rotate))
     camera_position[2] = z_scale * (device_dims[2] + 0.5*coating_dims[2])
 
-    camera_look_at = [center[0], center[1], (z_lookat*device_dims[2] + 0.50*coating_dims[2])]
+    camera_look_at = [center[0], center[1], 
+                     (z_lookat*device_dims[2]+0.50*coating_dims[2])]
 
-    light_position[0] = (device_dims[0]+light_offset) * cos(angle - 12*deg_to_rads)
-    light_position[1] = (device_dims[1]+light_offset) * sin(angle - 12*deg_to_rads)
+    light_position[0] = ((device_dims[0]+light_offset)
+                         * cos(camera_rotate-12*deg_to_rads))
+    light_position[1] = ((device_dims[1]+light_offset)
+                         * sin(camera_rotate-12*deg_to_rads))
     light_position[2] = camera_position[2] + light_offset/3.0
 
     if isosurface == True:
@@ -155,7 +162,7 @@ def color_and_finish(dev_string, default_color_dict, material,
       string: Updated device string containing color and finish settings
 
     """
-    # These two values only matter for SiO2, translucent, glass, and irid finishes
+    # These two values only matter for SiO2, translucent, glass, and irid
     transmit, filter_ = 0, 0
 
     # Set finish
@@ -268,8 +275,6 @@ def color_and_finish(dev_string, default_color_dict, material,
         color[3] = transmit
         color[4] = filter_
 
-#    dev_string += "pigment {ob:c} ".format(ob=123) \
-#            + "color rgbft " \
     dev_string += (f"pigment {{ color rgbft "
             + f"<{color[0]}, {color[1]}, {color[2]}, {color[3]}, {color[4]}>"
             + f" }}\n\t\t")
@@ -302,7 +307,7 @@ def write_header_and_camera(device_dims, coating_dims=[0, 0, 0],
     
     The following camera settings generate the same dimensions,
     but the second one has more whitespace at top and bottom:
-    height=800, width=4/3.0*height, up_dir=[0,0,1], right_dir=[0,1,0], sky=up_dir
+    height=800, width=4/3*height, up_dir=[0,0,1], right_dir=[0,1,0], sky=up_dir
     height=800, width=height, up_dir=[0,0,1.333], right_dir=[0,1,0], sky=up_dir
     
     Assumes that the device xy-plane is centered at 0.
@@ -353,19 +358,19 @@ def write_header_and_camera(device_dims, coating_dims=[0, 0, 0],
     """
     # If camera and light source locations specified but the look_at point is
     # missing, set look_at point and leave other values alone
-    # If either camera or light locations are missing, all values are filled in
-    # by the guess_camera function (called within write_header_and_camera)
+    # If either camera or light locations are missing, all values are filled
+    # in by the guess_camera function (called within write_header_and_camera)
     if look_at == []:
         if camera_loc != [] and light_loc != []:
             # Assumes the device is centered at x=y=0
             look_at = [0, 0, (-0.66 * device_dims[2] + 0.50 * coating_dims[2])]
 
-    # If any of the three options are still missing, take a guess at everything
+    # If any of the three are still missing, take a guess at everything
     if camera_loc == [] or look_at == [] or light_loc == []:
         camera_loc, look_at, light_loc = \
                 guess_camera(device_dims, coating_dims=coating_dims, 
-                camera_style=camera_style, angle = camera_rotate, 
-                center=[0, 0], isosurface = isosurface)
+                camera_style=camera_style, camera_rotate=camera_rotate, 
+                center=[0, 0], isosurface=isosurface)
 
     # Handles camera style and related option(s)
     if camera_style == "":
@@ -379,7 +384,6 @@ def write_header_and_camera(device_dims, coating_dims=[0, 0, 0],
     # Create POV header
     header = "#version 3.7;\n"
     header += f"global_settings {{ assumed_gamma 1.0 }}\n\n"
-#    header += "global_settings {ob:c} assumed_gamma 1.0 {cb:c}\n\n".format(ob=123, cb=125)
     
     if bg_color != []:
         header += ("background {{ "
@@ -483,7 +487,7 @@ def render_pov(pov_name, image_name, height, width,
         # 6, 7      Compute texture patterns, compute photons
         # 8         Compute reflected, refracted, and transmitted rays.
         # 9, 10, 11 Compute media and radiosity
-        # The default is 9 if not specified. Quick colors are used at 5 or below.
+        # The default is 9 if not specified. Quick colors used at 5 or below.
 
     if open_png == True:
         command += " && eog {0}".format(image_name)
@@ -498,7 +502,6 @@ def render_pov(pov_name, image_name, height, width,
     print("http://wiki.povray.org/content/Reference:File_Output_Options")
     print("http://wiki.povray.org/content/Reference:Tracing_Options")
 
-    div = '----------------------------------------------------'
     print(f"write_POV: Render with: \n{div}\n{command}\n{div}")
 
     return
