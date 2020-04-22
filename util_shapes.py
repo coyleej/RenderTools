@@ -104,10 +104,6 @@ def create_rectangle(center, end, halfwidths, angle=0, for_silo=False):
             + "{(center[1]-halfwidths[1])}, {end[0]:.5f}>\n\t\t"
             + "<{(center[0] + halfwidths[0])} "
             + "{(center[1]+halfwidths[1])}, {end[1]:.5f}>\n\t\t")
-#            + "<{0}, ".format(center[0] - halfwidths[0]) \
-#            + "{0}, {1:.5f}>\n\t\t".format((center[1] - halfwidths[1]), end[0]) \
-#            + "<{0} ".format(center[0] + halfwidths[0]) \
-#            + "{0}, {1:.5f}>\n\t\t".format((center[1] + halfwidths[1]), end[1])
 
     if angle != 0:      # in degrees
         rect_string += f"rotate <0, 0, {angle}> \n\t\t"
@@ -456,7 +452,6 @@ def add_accent_lines(shape, z_top, center, dims, feature_height, angle=0,
                         + "translate "
                         + f"<{vector1:.6f}, {vector2:.6f}, {z_limits[jj]:.6f}>"
                         + f"}}\n\t")
-#                        + "<{0:.6f}, {1:.6f}, {2:.6f}>".format(vector1, vector2, z_limits[jj]) \
 
         # Zcyl, Corner
         for x in x_limits:
@@ -467,16 +462,14 @@ def add_accent_lines(shape, z_top, center, dims, feature_height, angle=0,
                         + "translate "
                         + f"<{vector1:.6f}, {vector2:.6f}, {0:.6f}>"
                         + f"}}\n\t")
-#                        + "<{0:.6f}, {1:.6f}, {2:.6f}>".format(vector1, vector2, 0.0) \
                 for z in z_limits:
                     line += (f"object {{ Corner "
                             + "translate "
                             + f"<{vector1:.6f}, {vector2:.6f}, {z:.6f}>"
                             + f"}}\n\t")
-#                            + "<{0:.6f}, {1:.6f}, {2:.6f}>".format(vector1, vector2, z) \
 
         print("WARNING: add_accent_lines NOT FULLY TESTED!!!")
-        print("It is NOT guaranteed to work with rectangles not centered at origin!!!")
+        print("NOT guaranteed to work if rectangle not centered at origin!!!")
 
     elif shape == "polygon":
         # dims is a list of corners, where element = [x_coord, y_coord]
@@ -561,9 +554,6 @@ def add_accent_lines(shape, z_top, center, dims, feature_height, angle=0,
 #                    + f"<{vector1:.6f}, {vector2:.6f}, {0:.6f}>"
 #                    + f"}}\n\t")
 
-    print("WARNING: add_accent_lines NOT FULLY TESTED!!!")
-    print("NOT guaranteed to work with rectangles not centered at origin!!!")
-
     return line
 
 
@@ -596,8 +586,9 @@ def update_device_dims(device_dims, new_x, new_y, new_z):
 def write_circle_feature(shapes, k, device_dims, end, default_color_dict,
         use_default_colors, custom_colors, c, use_finish, custom_finish,
         add_lines=False):
-    """Creates a circle feature within a layer, complete with color and
-    finish specifications.
+    """Creates a circle feature within a layer.
+    
+    Includes with color and finish specifications.
 
     Args:
       shapes (dict): The dictionary contains all shape information
@@ -632,7 +623,6 @@ def write_circle_feature(shapes, k, device_dims, end, default_color_dict,
 
     """
     from util import deep_access
-#    from util_pov import color_and_finish
 
     material = deep_access(shapes, [str(k), 'material'])
     center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
@@ -641,8 +631,8 @@ def write_circle_feature(shapes, k, device_dims, end, default_color_dict,
     circle = "// Circular pillar\n\t" \
             + create_cylinder(center, end, radius)
 
-    circle = color_and_finish(circle, default_color_dict, material, \
-            use_default_colors, custom_color = custom_colors[c], \
+    circle = color_and_finish(circle, default_color_dict, material,
+            use_default_colors, custom_color = custom_colors[c],
             use_finish = use_finish, custom_finish = custom_finish)
 
     # Increments through custom color list
@@ -663,8 +653,9 @@ def write_circle_feature(shapes, k, device_dims, end, default_color_dict,
 def write_ellipse_feature(shapes, k, device_dims, end, default_color_dict,
         use_default_colors, custom_colors, c, use_finish, custom_finish,
         add_lines=False):
-    """Create an ellipse feature within a layer, complete with color and
-    finish specifications.
+    """Create an ellipse feature within a layer.
+    
+    Includes color and finish specifications.
 
     Args:
       shapes (dict): The dictionary contains all shape information
@@ -673,10 +664,10 @@ def write_ellipse_feature(shapes, k, device_dims, end, default_color_dict,
       end (list): Limits on the z-dimensions, as [upper, lower]
       default_color_dict (dict: dict): Dictionary containing default
           finishes for the various material types
-      use_default_colors (bool): Boolean selects which color set to use.
-          True will assign colors based on the material type ("Si",
-          "SiO2", and "subst").  False will use user-assigned custom
-          colors.
+      use_default_colors (bool): Boolean selects which color set to 
+          use.  True will assign colors based on the material type
+          ("Si", "SiO2", and "subst").  False will use user-assigned
+          custom colors.
       custom_colors (list): RGBFT values describe a single color. If
           you set ``use_default_colors=False`` but forget to specify
           a custom color, it will use #00aaaa (the Windows 95 default
@@ -699,7 +690,6 @@ def write_ellipse_feature(shapes, k, device_dims, end, default_color_dict,
 
     """
     from util import deep_access
-#    from util_pov import color_and_finish
 
     material = deep_access(shapes, [str(k), 'material'])
     center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
@@ -710,8 +700,8 @@ def write_ellipse_feature(shapes, k, device_dims, end, default_color_dict,
     ellipse = "// Ellipse\n\t" \
             + create_ellipse(center, end, halfwidths, angle)
 
-    ellipse = color_and_finish(ellipse, default_color_dict, material, \
-            use_default_colors, custom_color = custom_colors[c], \
+    ellipse = color_and_finish(ellipse, default_color_dict, material,
+            use_default_colors, custom_color = custom_colors[c],
             use_finish = use_finish, custom_finish = custom_finish)
 
     # Increments through custom color list
@@ -733,8 +723,9 @@ def write_ellipse_feature(shapes, k, device_dims, end, default_color_dict,
 def write_rectangle_feature(shapes, k, device_dims, end, default_color_dict,
         use_default_colors, custom_colors, c, use_finish, custom_finish,
         add_lines=False):
-    """Creates a rectangle feature within a layer, complete with color and
-    finish specifications.
+    """Creates a rectangle feature within a layer.
+    
+    Includes color and finish specifications.
 
     Args:
       shapes (dict): The dictionary contains all shape information
@@ -769,7 +760,6 @@ def write_rectangle_feature(shapes, k, device_dims, end, default_color_dict,
 
     """
     from util import deep_access
-#    from util_pov import color_and_finish
 
     material = deep_access(shapes, [str(k), 'material'])
     center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
@@ -777,11 +767,11 @@ def write_rectangle_feature(shapes, k, device_dims, end, default_color_dict,
     halfwidths = [hw.get("x"), hw.get("y")]
     angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
 
-    rectangle = "// Rectangle\n\t" \
-            + create_rectangle(center, end, halfwidths, angle)
+    rectangle = ("// Rectangle\n\t"
+            + create_rectangle(center, end, halfwidths, angle))
 
-    rectangle = color_and_finish(rectangle, default_color_dict, material, \
-            use_default_colors, custom_color = custom_colors[c], \
+    rectangle = color_and_finish(rectangle, default_color_dict, material,
+            use_default_colors, custom_color = custom_colors[c], 
             use_finish = use_finish, custom_finish = custom_finish)
 
     # Increments through custom color list
@@ -842,7 +832,6 @@ def write_polygon_feature(shapes, k, device_dims, end, default_color_dict,
 
     """
     from util import deep_access
-#    from util_pov import color_and_finish
 
     material = deep_access(shapes, [str(k), 'material'])
     center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
@@ -921,7 +910,8 @@ def check_for_false_silos(shapes, layer_type):
 
             # Checks shapes containing halfwidths for zero dimensions         
             elif layer_shape in ["ellipse", "rectangle"] and deep_access(
-                    shapes, [str(iii+1), 'shape_vars', 'halfwidths']) == [0, 0]:
+                    shapes, 
+                    [str(iii+1), 'shape_vars', 'halfwidths']) == [0, 0]:
                 print("Warning: Ignoring vacuum with dimensions equal to zero")
 
             # Checks that polygons have at least 3 points
@@ -980,7 +970,6 @@ def write_silo_feature(shapes, k, layer_type, device_dims, end,
 
     """
     from util import deep_access
-#    from util_pov import color_and_finish
     from copy import deepcopy
 
     material = deep_access(shapes, [str(k), 'material'])
@@ -1299,7 +1288,6 @@ def create_device(device_dict,
       coating_ior_dict (dict,optional): Dictionary containing index of
           refraction values for each coating material (Default value = 
           {"background":1.0})
-      coating_ior_dict (dict,optional):  (Default value = {"background":1.0})
       coating_layers (list, optional): List containing material and
           thickness of each layer, starting with the bottom layer and
           working up (Default value = [])
@@ -1343,7 +1331,6 @@ def create_device(device_dict,
     from copy import deepcopy
     from util import deep_access
     from util_pov import guess_camera
-#    from util_pov import color_and_finish
     from util_pov import write_header_and_camera, render_pov
 
     default_color_dict = {
@@ -1433,7 +1420,7 @@ def create_device(device_dict,
 
                 device += bg_slab
 
-                # Prevent end caps from being overwritten by background layer(s)
+                # Prevent end caps from being overwritten by background layers
                 end[0] -= 0.00010
                 end[1] -= 0.00010
 
@@ -1560,21 +1547,20 @@ def isosurface_unit_cell(mesh,
     Args:
       mesh(str): the mesh object describing the isosurface
       device_dict(dict: dict): Dictionary entry from a json file
-      n(list, optional): Dimensions of the numpy field array, used as the isosurface
-    dimensions (Default value = [0)
-      slice_UC(bool): Gives you the option to take a slice out of the unit
-    cell to help visualize the field (default True)
-      transmit(float, optional): Set transparency of the unit cell (competely opaque
-    by default); also the color cannot be changed (always
-    a dark-ish grey)
-      corner1(list, optional): A corner of the slice you wish to remove/keep, used
-    with corner2 to define a box for an intersection or
-    difference object (Default value = [0)
-      corner2(list, optional): The corner diagonally opposite corner1 (Default value = [0)
-      subtract_box(bool, optional): Controls whether POV-Ray uses a difference
-    object (True, default) or an intersection (False)
-      0: 
-      0]: 
+      n(list, optional): Dimensions of the numpy field array, used as
+          the isosurface dimensions (Default value = [0)
+      slice_UC(bool): Gives you the option to take a slice out of the
+          unit cell to help visualize the field (default True)
+      transmit(float, optional): Set transparency of the unit cell 
+          (competely opaque by default); also the color cannot be
+          changed (always a dark-ish grey)
+      corner1(list, optional): A corner of the slice you wish to 
+          remove/keep, used with corner2 to define a box for an
+          intersection or difference object (Default value = [0)
+      corner2(list, optional): The corner diagonally opposite corner1 
+          (Default value = [0)
+      subtract_box(bool, optional): Controls whether POV-Ray uses a
+          difference object (True, default) or an intersection (False)
       use_slice_UC:  (Default value = True)
 
     Returns:
@@ -1619,12 +1605,17 @@ def isosurface_unit_cell(mesh,
     # Create all layers
     for i in range(number_of_layers):
 
-        if deep_access(device_dict, ['statepoint', 'dev_layers', str(i)]).get('shapes') is not None:
-            shapes = deep_access(device_dict, ['statepoint', 'dev_layers', str(i), 'shapes'])
-            background = deep_access(device_dict, ['statepoint', 'dev_layers', str(i), 'background'])
-            thickness = deep_access(device_dict, ['statepoint', 'dev_layers', str(i), 'thickness'])
+        if deep_access(device_dict, 
+                ['statepoint', 'dev_layers', str(i)]).get('shapes') is not None:
+            shapes = deep_access(device_dict, 
+                    ['statepoint', 'dev_layers', str(i), 'shapes'])
+            background = deep_access(device_dict, 
+                    ['statepoint', 'dev_layers', str(i), 'background'])
+            thickness = deep_access(device_dict, 
+                    ['statepoint', 'dev_layers', str(i), 'thickness'])
             # end = [top, bottom]
-            end = [float(-1.0 * device_dims[2]), float(-1.0 * device_dims[2] - thickness)]
+            end = [float(-1.0 * device_dims[2]), 
+                    float(-1.0 * device_dims[2] - thickness)]
 
             device += f"union\n\t{{\n\t"
 
@@ -1652,7 +1643,8 @@ def isosurface_unit_cell(mesh,
 
     # Can also subtract out pieces of the unit cell, 
     if use_slice_UC == True:
-        device = slice_isosurface(device, corner1, corner2, subtract_box = subtract_box)
+        device = slice_isosurface(device, corner1, corner2, 
+                                  subtract_box = subtract_box)
 
     # Append unit cell to mesh object
     mesh += device
@@ -1825,7 +1817,7 @@ def color_and_finish(dev_string, default_color_dict, material,
         color.append(0)     # transmit
 
     if use_finish in ["SiO2", "translucent", "glass", "irid"]: 
-        print("\nWARNING: color_and_finish is overriding transmit and/or filter value!!")
+        print("\nWARNING: color_and_finish overriding transmit/filter value!!")
         color[3] = transmit
         color[4] = filter_
 

@@ -26,9 +26,9 @@ def guess_camera(device_dims, coating_dims=[0,0,0],
       camera_style (string, optional): The desired camera style, 
           currently accepts perspective and orthographic (Default 
           "perspective")
-      camera_rotate (float, optional): Rotates the camera around the z-axis 
-          (in degrees); 0 will look down the x-axis at the side of the 
-          device (Default = 0)
+      camera_rotate (float, optional): Rotates the camera around the 
+          z-axis (in degrees); 0 will look down the x-axis at the side
+          of the device (Default = 0)
           #### NOTE: Renamed from "angle" to match write_pov!!! ####
       center (list, optional): The center of the device, gets over-
           written if isosurface=True (Default value = [0,0])
@@ -122,8 +122,10 @@ def write_header_and_camera(device_dims, coating_dims=[0, 0, 0],
     
     The following camera settings generate the same dimensions,
     but the second one has more whitespace at top and bottom:
-    height=800, width=4/3*height, up_dir=[0,0,1], right_dir=[0,1,0], sky=up_dir
-    height=800, width=height, up_dir=[0,0,1.333], right_dir=[0,1,0], sky=up_dir
+    height=800, width=4/3*height, up_dir=[0,0,1], right_dir=[0,1,0],
+            sky=up_dir
+    height=800, width=height, up_dir=[0,0,1.333], right_dir=[0,1,0],
+            sky=up_dir
     
     Assumes that the device xy-plane is centered at 0.
 
@@ -168,7 +170,8 @@ def write_header_and_camera(device_dims, coating_dims=[0, 0, 0],
           (Default value = "")
 
     Returns:
-      string: Header information with camera, light, and background settings
+      string: Header information with camera, light, and background 
+          settings
 
     """
     # If camera and light source locations specified but the look_at point is

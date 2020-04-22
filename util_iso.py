@@ -180,7 +180,6 @@ def write_mesh2_params(parameter, values, values_per_line=2):
     """
     param_string = f"\n\t{parameter} {{"
     param_string += f"\n\t\t{len(values)}"
-#    param_string += "\n\t\t{0}".format(len(values))
 
     for j in range(len(values)):
         if j % 2 == 0:
