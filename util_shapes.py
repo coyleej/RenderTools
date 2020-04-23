@@ -22,7 +22,9 @@ A quick summary:
   * isosurface_unit_cell generates a single unit cell using many of the
     functions in this file, but with isosurface-specific modifications
     including a different origin and scaling the device
-  * color_and_finish sets the color and finish based on values 
+  * create_finish_dict creates a dictionary containing the default,
+    custom, and coating finishes as relevant
+  * set_color_and_finish sets the color and finish based on values 
     specified by the user
 """
 
@@ -495,10 +497,6 @@ def add_accent_lines(shape, z_top, center, dims, feature_height, angle=0,
         line = sph
         #line += z_cyl
 
-        # Need to add or subtract - not sure which 'cause left-handed - 
-        # the center from the end*[0] (x-coord) and end*[1] (y-coord)
-
-
         # Create cylinders in xy-plane, both at top and bottom of shape.
         # Loop over all vertices defined in dims
         for i in range(len(dims)):
@@ -521,14 +519,16 @@ def add_accent_lines(shape, z_top, center, dims, feature_height, angle=0,
                         + f"}}\n\t")
 
                 # Add cylinders for bigger straight lines
-
+                #
                 # Only create cylinders if they'll be longer than the
                 # sphere radius, line_thickness, because POV-Ray
-                # doesn't like really short cylinders
-                # Do I eventually want to incorporated the blob function?
-
+                # doesn't like really short cylinders.
+                #
                 # Only need the x and y coords for cylinder length
                 # The z value drops out because it's horizontal
+                #
+                # Do I eventually want to incorporated the blob 
+                # function?
                 cyl_length = sqrt((end1[0] - end2[0])**2 
                         + (end1[1] - end2[1])**2)
 
@@ -547,8 +547,11 @@ def add_accent_lines(shape, z_top, center, dims, feature_height, angle=0,
                             + f"no_shadow\n\t\t}}\n\t")
 
 #            # Add vertical lines 
+#            #
 #            # Again, not used because there's not a way to only place
 #            # them where it makes sense
+#            #
+#            # May eventually have the code output this to stdout
 #            line += (f"object {{ Zcyl "
 #                    + "translate "
 #                    + f"<{vector1:.6f}, {vector2:.6f}, {0:.6f}>"
@@ -583,9 +586,8 @@ def update_device_dims(device_dims, new_x, new_y, new_z):
     return device_dims
 
 
-def write_circle_feature(shapes, k, device_dims, end, default_color_dict,
-        use_default_colors, custom_colors, c, use_finish, custom_finish,
-        add_lines=False):
+def write_circle_feature(shapes, k, device_dims, end, 
+        finish_dict, feature_color_finish, c, add_lines=False):
     """Creates a circle feature within a layer.
     
     Includes with color and finish specifications.
@@ -595,26 +597,10 @@ def write_circle_feature(shapes, k, device_dims, end, default_color_dict,
       k (int): Counter iterating though features
       device_dims (list): Dimensions of the unit cell
       end (list): Limits on the z-dimensions, as [upper, lower]
-      default_color_dict (dict: dict): Dictionary containing default
-          finishes for the various material types
-      use_default_colors (bool): Boolean selects which color set to use.
-          True will assign colors based on the material type ("Si",
-          "SiO2", and "subst").  False will use user-assigned custom
-          colors.
-      custom_colors (list): RGBFT values describe a single color. If
-          you set ``use_default_colors=False`` but forget to specify
-          a custom color, it will use #00aaaa (the Windows 95 default
-          desktop color).
-    
-          RGB values must be in the range [0,1]. F and T are filter and
-          transmit, respectively. They are optional and both default 
-          to 0 for most finishes.
+      finish_dict (dict): Dictionary containing all relevant finishes
+      feature_color_finish (list): List of all device colors and 
+          finishes, the counter c grabs the appropriate value
       c (int): Counter iterating though custom_color
-      use_finish (str): Select the finish you want. Current options:
-          "material", "Si", "SiO2", "glass", "bright_metal",
-          "dull_metal", "irid", "billiard", "dull", "custom"
-      custom_finish (str): User-defined custom finish. Set 
-          use_finish=custom to call this option.
       add_lines (bool, optional): Option to add the accent lines to 
           the feature (default False)
 
@@ -624,20 +610,16 @@ def write_circle_feature(shapes, k, device_dims, end, default_color_dict,
     """
     from util import deep_access
 
-    material = deep_access(shapes, [str(k), 'material'])
     center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
     radius = deep_access(shapes, [str(k), 'shape_vars', 'radius'])
 
     circle = "// Circular pillar\n\t" \
             + create_cylinder(center, end, radius)
 
-    circle = color_and_finish(circle, default_color_dict, material,
-            use_default_colors, custom_color = custom_colors[c],
-            use_finish = use_finish, custom_finish = custom_finish)
+    circle = set_color_and_finish(circle, finish_dict=finish_dict,
+            feature_color_finish=feature_color_finish[c])
 
-    # Increments through custom color list
-    if not use_default_colors:
-        c += 1
+    c += 1
 
     # Add lines to the top and bottom of the feature
     if add_lines == True:
@@ -650,9 +632,8 @@ def write_circle_feature(shapes, k, device_dims, end, default_color_dict,
     return circle, c, device_dims
 
 
-def write_ellipse_feature(shapes, k, device_dims, end, default_color_dict,
-        use_default_colors, custom_colors, c, use_finish, custom_finish,
-        add_lines=False):
+def write_ellipse_feature(shapes, k, device_dims, end, 
+        finish_dict, feature_color_finish, c, add_lines=False):
     """Create an ellipse feature within a layer.
     
     Includes color and finish specifications.
@@ -662,26 +643,10 @@ def write_ellipse_feature(shapes, k, device_dims, end, default_color_dict,
       k (int): Counter iterating though features
       device_dims (list): Dimensions of the unit cell
       end (list): Limits on the z-dimensions, as [upper, lower]
-      default_color_dict (dict: dict): Dictionary containing default
-          finishes for the various material types
-      use_default_colors (bool): Boolean selects which color set to 
-          use.  True will assign colors based on the material type
-          ("Si", "SiO2", and "subst").  False will use user-assigned
-          custom colors.
-      custom_colors (list): RGBFT values describe a single color. If
-          you set ``use_default_colors=False`` but forget to specify
-          a custom color, it will use #00aaaa (the Windows 95 default
-          desktop color).
-    
-          RGB values must be in the range [0,1]. F and T are filter and
-          transmit, respectively. They are optional and both default 
-          to 0 for most finishes.
+      finish_dict (dict): Dictionary containing all relevant finishes
+      feature_color_finish (list): List of all device colors and 
+          finishes, the counter c grabs the appropriate value
       c (int): Counter iterating though custom_color
-      use_finish (str): Select the finish you want. Current options:
-          "material", "Si", "SiO2", "glass", "bright_metal",
-          "dull_metal", "irid", "billiard", "dull", "custom"
-      custom_finish (str): User-defined custom finish. Set 
-          use_finish=custom to call this option.
       add_lines (bool, optional): Option to add the accent lines to 
           the feature (default False)
 
@@ -691,7 +656,6 @@ def write_ellipse_feature(shapes, k, device_dims, end, default_color_dict,
     """
     from util import deep_access
 
-    material = deep_access(shapes, [str(k), 'material'])
     center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
     hw = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
     halfwidths = [hw.get("x"), hw.get("y")]
@@ -700,13 +664,11 @@ def write_ellipse_feature(shapes, k, device_dims, end, default_color_dict,
     ellipse = "// Ellipse\n\t" \
             + create_ellipse(center, end, halfwidths, angle)
 
-    ellipse = color_and_finish(ellipse, default_color_dict, material,
-            use_default_colors, custom_color = custom_colors[c],
-            use_finish = use_finish, custom_finish = custom_finish)
-
+    ellipse = set_color_and_finish(ellipse, finish_dict=finish_dict,
+            feature_color_finish=feature_color_finish[c])
+            
     # Increments through custom color list
-    if not use_default_colors:
-        c += 1
+    c += 1
 
     # Add lines to the top and bottom of the feature
     if add_lines == True:
@@ -720,9 +682,8 @@ def write_ellipse_feature(shapes, k, device_dims, end, default_color_dict,
     return ellipse, c, device_dims
 
 
-def write_rectangle_feature(shapes, k, device_dims, end, default_color_dict,
-        use_default_colors, custom_colors, c, use_finish, custom_finish,
-        add_lines=False):
+def write_rectangle_feature(shapes, k, device_dims, end, 
+        finish_dict, feature_color_finish, c, add_lines=False):
     """Creates a rectangle feature within a layer.
     
     Includes color and finish specifications.
@@ -732,26 +693,10 @@ def write_rectangle_feature(shapes, k, device_dims, end, default_color_dict,
       k (int): Counter iterating though features
       device_dims (list): Dimensions of the unit cell
       end (list): Limits on the z-dimensions, as [upper, lower]
-      default_color_dict (dict: dict): Dictionary containing default
-          finishes for the various material types
-      use_default_colors (bool): Boolean selects which color set to use.
-          True will assign colors based on the material type ("Si",
-          "SiO2", and "subst").  False will use user-assigned custom
-          colors.
-      custom_colors (list): RGBFT values describe a single color. If
-          you set ``use_default_colors=False`` but forget to specify
-          a custom color, it will use #00aaaa (the Windows 95 default
-          desktop color).
-    
-          RGB values must be in the range [0,1]. F and T are filter and
-          transmit, respectively. They are optional and both default 
-          to 0 for most finishes.
+      finish_dict (dict): Dictionary containing all relevant finishes
+      feature_color_finish (list): List of all device colors and 
+          finishes, the counter c grabs the appropriate value
       c (int): Counter iterating though custom_color
-      use_finish (str): Select the finish you want. Current options:
-          "material", "Si", "SiO2", "glass", "bright_metal",
-          "dull_metal", "irid", "billiard", "dull", "custom"
-      custom_finish (str): User-defined custom finish. Set 
-          use_finish=custom to call this option.
       add_lines (bool, optional): Option to add the accent lines to 
           the feature (default False)
 
@@ -761,7 +706,6 @@ def write_rectangle_feature(shapes, k, device_dims, end, default_color_dict,
     """
     from util import deep_access
 
-    material = deep_access(shapes, [str(k), 'material'])
     center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
     hw = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
     halfwidths = [hw.get("x"), hw.get("y")]
@@ -770,13 +714,11 @@ def write_rectangle_feature(shapes, k, device_dims, end, default_color_dict,
     rectangle = ("// Rectangle\n\t"
             + create_rectangle(center, end, halfwidths, angle))
 
-    rectangle = color_and_finish(rectangle, default_color_dict, material,
-            use_default_colors, custom_color = custom_colors[c], 
-            use_finish = use_finish, custom_finish = custom_finish)
+    rectangle = set_color_and_finish(rectangle, finish_dict=finish_dict,
+            feature_color_finish=feature_color_finish[c])
 
     # Increments through custom color list
-    if not use_default_colors:
-        c += 1
+    c += 1
 
     # Add lines edges of the feature
     if add_lines == True:
@@ -790,9 +732,8 @@ def write_rectangle_feature(shapes, k, device_dims, end, default_color_dict,
     return rectangle, c, device_dims
 
 
-def write_polygon_feature(shapes, k, device_dims, end, default_color_dict,
-        use_default_colors, custom_colors, c, use_finish, custom_finish,
-        add_lines=False):
+def write_polygon_feature(shapes, k, device_dims, end, 
+        finish_dict, feature_color_finish, c, add_lines=False):
     """Create a polygon feature, with color and finish.
     
     The polygon vertices must be specified in counter-clockwise order
@@ -804,26 +745,10 @@ def write_polygon_feature(shapes, k, device_dims, end, default_color_dict,
       k (int): Counter iterating though features
       device_dims (list): Dimensions of the unit cell
       end (list): Limits on the z-dimensions, as [upper, lower]
-      default_color_dict (dict: dict): Dictionary containing default
-          finishes for the various material types
-      use_default_colors (bool): Boolean selects which color set to use.
-          True will assign colors based on the material type ("Si",
-          "SiO2", and "subst").  False will use user-assigned custom
-          colors.
-      custom_colors (list): RGBFT values describe a single color. If
-          you set ``use_default_colors=False`` but forget to specify
-          a custom color, it will use #00aaaa (the Windows 95 default
-          desktop color).
-    
-          RGB values must be in the range [0,1]. F and T are filter and
-          transmit, respectively. They are optional and both default 
-          to 0 for most finishes.
+      finish_dict (dict): Dictionary containing all relevant finishes
+      feature_color_finish (list): List of all device colors and 
+          finishes, the counter c grabs the appropriate value
       c (int): Counter iterating though custom_color
-      use_finish (str): Select the finish you want. Current options:
-          "material", "Si", "SiO2", "glass", "bright_metal",
-          "dull_metal", "irid", "billiard", "dull", "custom"
-      custom_finish (str): User-defined custom finish. Set 
-          use_finish=custom to call this option.
       add_lines (bool, optional): Option to add the accent lines to 
           the feature (default False)
 
@@ -833,7 +758,6 @@ def write_polygon_feature(shapes, k, device_dims, end, default_color_dict,
     """
     from util import deep_access
 
-    material = deep_access(shapes, [str(k), 'material'])
     center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
     angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
     points = deep_access(shapes, [str(k), 'shape_vars', 'vertices'])
@@ -850,8 +774,6 @@ def write_polygon_feature(shapes, k, device_dims, end, default_color_dict,
     # Eric and his never-ending dictionaries...
     vertices = []
     for k in range(len(points)):
-        #vertex = [deep_access(vert_dict2, [f"{k}", "x"]), 
-        #        deep_access(vert_dict2, [f"{k}", "y"])]
         vertex = [deep_access(points, [f"{k}", "x"]), 
                 deep_access(points, [f"{k}", "y"])]
         vertices.append(vertex)
@@ -862,13 +784,11 @@ def write_polygon_feature(shapes, k, device_dims, end, default_color_dict,
     polygon = ("// Polygon\n\t"
             + create_polygon(center, end, vertices, device_dims, angle=0))
 
-    polygon = (color_and_finish(polygon, default_color_dict, material,
-            use_default_colors, custom_color = custom_colors[c],
-            use_finish = use_finish, custom_finish = custom_finish))
-
+    polygon = set_color_and_finish(polygon, finish_dict=finish_dict,
+            feature_color_finish=feature_color_finish[c])
+            
     # Increments through custom color list
-    if not use_default_colors:
-        c += 1
+    c += 1
 
     # Add lines edges of the feature
     if add_lines == True:
@@ -928,8 +848,7 @@ def check_for_false_silos(shapes, layer_type):
 
 
 def write_silo_feature(shapes, k, layer_type, device_dims, end, 
-        default_color_dict, use_default_colors, custom_colors, c, use_finish,
-        custom_finish, add_lines=False):
+        finish_dict, feature_color_finish, c, add_lines=False):
     """Create a silo feature, with color and finish.
     
     Creates a silo. Should be able to handle any possible combination
@@ -941,26 +860,10 @@ def write_silo_feature(shapes, k, layer_type, device_dims, end,
       layer_type (str): The type of the layer as a string
       device_dims(list): Dimensions of the unit cell
       end(list): Limits on the z-dimensions, as [upper, lower]
-      default_color_dict (dict: dict): Dictionary containing default
-          finishes for the various material types
-      use_default_colors (bool): Boolean selects which color set to use.
-          True will assign colors based on the material type ("Si",
-          "SiO2", and "subst").  False will use user-assigned custom
-          colors.
-      custom_colors (list): RGBFT values describe a single color. If
-          you set ``use_default_colors=False`` but forget to specify
-          a custom color, it will use #00aaaa (the Windows 95 default
-          desktop color).
-    
-          RGB values must be in the range [0,1]. F and T are filter and
-          transmit, respectively. They are optional and both default 
-          to 0 for most finishes.
+      finish_dict (dict): Dictionary containing all relevant finishes
+      feature_color_finish (list): List of all device colors and 
+          finishes, the counter c grabs the appropriate value
       c (int): Counter iterating though custom_color
-      use_finish (str): Select the finish you want. Current options:
-          "material", "Si", "SiO2", "glass", "bright_metal",
-          "dull_metal", "irid", "billiard", "dull", "custom"
-      custom_finish (str): User-defined custom finish. Set 
-          use_finish=custom to call this option.
       add_lines (bool, optional): Option to add the accent lines to 
           the feature (default False)
 
@@ -971,8 +874,6 @@ def write_silo_feature(shapes, k, layer_type, device_dims, end,
     """
     from util import deep_access
     from copy import deepcopy
-
-    material = deep_access(shapes, [str(k), 'material'])
 
     device = "// Silo\n\t" \
             + f"difference \n\t\t{{\n\t\t"
@@ -990,7 +891,6 @@ def write_silo_feature(shapes, k, layer_type, device_dims, end,
         dims_outer = deepcopy(radius)
 
     elif deep_access(shapes, [str(k), 'shape']) == "ellipse":
-        material = deep_access(shapes, [str(k), 'material'])
         center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
         hw = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
         halfwidths = [hw.get("x"), hw.get("y")]
@@ -1003,7 +903,6 @@ def write_silo_feature(shapes, k, layer_type, device_dims, end,
         dims_outer = deepcopy(halfwidths)
 
     elif deep_access(shapes, [str(k), 'shape']) == "rectangle":
-        material = deep_access(shapes, [str(k), 'material'])
         center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
         hw = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
         halfwidths = [hw.get("x"), hw.get("y")]
@@ -1017,7 +916,6 @@ def write_silo_feature(shapes, k, layer_type, device_dims, end,
         dims_outer = deepcopy(halfwidths)
 
     elif deep_access(shapes, [str(k), 'shape']) == "polygon":
-        material = deep_access(shapes, [str(k), 'material'])
         center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
         angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
         points = deep_access(shapes, [str(k), 'shape_vars', 'vertices'])
@@ -1060,7 +958,6 @@ def write_silo_feature(shapes, k, layer_type, device_dims, end,
             dims_inner = deepcopy(radius)
 
         elif deep_access(shapes, [str(j), 'shape']) == "ellipse":
-            #material = deep_access(shapes, [str(k), 'material'])
             center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
             hw = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
             halfwidths = [hw.get("x"), hw.get("y")]
@@ -1074,7 +971,6 @@ def write_silo_feature(shapes, k, layer_type, device_dims, end,
             dims_inner = deepcopy(halfwidths)
 
         elif deep_access(shapes, [str(j), 'shape']) == "rectangle":
-            #material = deep_access(shapes, [str(k), 'material'])
             center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
             hw = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
             halfwidths = [hw.get("x"), hw.get("y")]
@@ -1088,7 +984,6 @@ def write_silo_feature(shapes, k, layer_type, device_dims, end,
             dims_inner = deepcopy(halfwidths)
 
         elif deep_access(shapes, [str(j), 'shape']) == "polygon":
-            i#material = deep_access(shapes, [str(k), 'material'])
             center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
             angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
             points = deep_access(shapes, [str(k), 'shape_vars', 'vertices'])
@@ -1117,13 +1012,11 @@ def write_silo_feature(shapes, k, layer_type, device_dims, end,
 
         j += 1
 
-    device = color_and_finish(device, default_color_dict, material, \
-            use_default_colors, custom_color = custom_colors[c], \
-            use_finish = use_finish, custom_finish = custom_finish)
+    device = set_color_and_finish(device, finish_dict=finish_dict,
+            feature_color_finish=feature_color_finish[c])
 
     # Increments through custom color list
-    if not use_default_colors:
-        c += 1
+    c += 1
 
     # Add all silo lines
     if add_lines == True:
@@ -1135,9 +1028,8 @@ def write_silo_feature(shapes, k, layer_type, device_dims, end,
     return device, c, device_dims
 
 
-def create_device_layer(shapes, device_dims, end, thickness, 
-        default_color_dict, use_default_colors, custom_colors, 
-        c, use_finish, custom_finish, add_lines=False):
+def create_device_layer(shapes, device_dims, end, thickness,
+        finish_dict, feature_color_finish, c, add_lines=False):
     """Generate a single layer of a device.
     
     Called by create_device, which creates the full unit cell. Adds a
@@ -1149,26 +1041,10 @@ def create_device_layer(shapes, device_dims, end, thickness,
       device_dims (list): Dimensions of the unit cell
       end (list): Limits on the z-dimensions, as [upper, lower]
       thickness (float): thickness of the layer
-      default_color_dict (dict: dict): Dictionary containing default
-          finishes for the various material types
-      use_default_colors (bool): Boolean selects which color set to use.
-          True will assign colors based on the material type ("Si",
-          "SiO2", and "subst").  False will use user-assigned custom
-          colors.
-      custom_colors (list): RGBFT values describe a single color. If
-          you set ``use_default_colors=False`` but forget to specify
-          a custom color, it will use #00aaaa (the Windows 95 default
-          desktop color).
-    
-          RGB values must be in the range [0,1]. F and T are filter and
-          transmit, respectively. They are optional and both default 
-          to 0 for most finishes.
+      finish_dict (dict): Dictionary containing all relevant finishes
+      feature_color_finish (list): List of all device colors and 
+          finishes, the counter c grabs the appropriate value
       c (int): Counter iterating though custom_color
-      use_finish (str): Select the finish you want. Current options:
-          "material", "Si", "SiO2", "glass", "bright_metal",
-          "dull_metal", "irid", "billiard", "dull", "custom"
-      custom_finish (str): User-defined custom finish. Set 
-          use_finish=custom to call this option.
       add_lines (bool, optional): Option to add the accent lines to 
           the feature (default False)
 
@@ -1178,10 +1054,6 @@ def create_device_layer(shapes, device_dims, end, thickness,
 
     """
     from util import deep_access
-
-    if use_default_colors == True:
-        custom_colors = [[]]
-        c = 0
 
     # Determine feature types in layer
     layer_type = []
@@ -1203,38 +1075,33 @@ def create_device_layer(shapes, device_dims, end, thickness,
     for k in range(len(layer_type)):
 
         if layer_type[k] == "circle":
-            feature, c, device_dims = write_circle_feature(shapes, k,
-                    device_dims, end, default_color_dict,
-                    use_default_colors, custom_colors, c, use_finish,
-                    custom_finish, add_lines)
+            feature, c, device_dims = write_circle_feature(shapes, k, 
+                    device_dims, end, finish_dict, feature_color_finish, 
+                    c, add_lines)
             device_layer += feature
 
         elif layer_type[k] == "silo":
             feature, c, device_dims = write_silo_feature(shapes, k,
-                    layer_type, device_dims, end, default_color_dict,
-                    use_default_colors, custom_colors, c, use_finish,
-                    custom_finish, add_lines)
+                    layer_type, device_dims, end, finish_dict,
+                    feature_color_finish, c, add_lines)
             device_layer += feature
 
         elif layer_type[k] == "ellipse":
-            feature, c, device_dims = write_ellipse_feature(shapes, k,
-                    device_dims, end, default_color_dict,
-                    use_default_colors, custom_colors, c, use_finish,
-                    custom_finish, add_lines)
+            feature, c, device_dims = write_ellipse_feature(shapes, k, 
+                    device_dims, end,  finish_dict, feature_color_finish, 
+                    c, add_lines)
             device_layer += feature
 
         elif layer_type[k] == "rectangle":
-            feature, c, device_dims = write_rectangle_feature(shapes, k,
-                    device_dims, end, default_color_dict,
-                    use_default_colors, custom_colors, c, use_finish,
-                    custom_finish, add_lines)
+            feature, c, device_dims = write_rectangle_feature(shapes, k, 
+                    device_dims, end, finish_dict, feature_color_finish, 
+                    c, add_lines)
             device_layer += feature
 
         elif layer_type[k] == "polygon":
-            feature, c, device_dims = write_polygon_feature(shapes, k,
-                    device_dims, end, default_color_dict,
-                    use_default_colors, custom_colors, c, use_finish,
-                    custom_finish, add_lines)
+            feature, c, device_dims = write_polygon_feature(shapes, k, 
+                    device_dims, end, finish_dict, feature_color_finish,
+                    c, add_lines)
             device_layer += feature
 
         elif layer_type[k] == "Vacuum":
@@ -1251,20 +1118,26 @@ def create_device_layer(shapes, device_dims, end, thickness,
 
 
 def create_device(device_dict, 
-    num_UC_x=2, num_UC_y=2, coating_layers=[], 
-    coating_color_dict={"background":[1, 0, 0, 0, 0]}, 
-    coating_ior_dict={"background":1.0}, 
-    use_default_colors=True, custom_colors=[[0, 0.667, 0.667, 0, 0]], 
-    use_finish="", custom_finish="", 
-    add_lines=False, line_thickness=0.0020, line_color=[0, 0, 0, 0, 0]):
+    feature_color_finish,
+    num_UC_x=2,
+    num_UC_y=2,
+    coating_layers=[], 
+    coating_color_dict={"translucent":[1, 0, 0, 0, 0]}, 
+    coating_ior_dict={"translucent":1.0}, 
+    custom_finish="", 
+    add_lines=False,
+    line_thickness=0.0020,
+    line_color=[0, 0, 0, 0, 0]):
     """Generates a string containing the device information.
     
     The required input information is
-    * the dictionary entry from the json file (device_dict)
-    
+    * device_dict (the dictionary entry from the json file)
+    * feature_color_finish (list of feature colors and finishes)
+
     The color and finish of the device can be specified by the user
-    via the ``color_and_finish`` function. The substrate will always
-    be a dull, dark grey; this cannot be modified by the user.
+    via ``feature_color_finish``. The substrate will always be a 
+    dull, dark grey; this cannot be modified by the user, except 
+    directly in the .pov file.
     
     Some assumptions:
     * All shapes describing holes in silos are the vacuum layers
@@ -1278,6 +1151,8 @@ def create_device(device_dict,
 
     Args:
       device_dict (dict: dict): Dictionary entry from a json file
+      feature_color_finish (list): List of all device colors and 
+          finishes, the counter c grabs the appropriate value
       num_UC_x (int, optional): Number of unit cells in the y direction
           (default 2)
       num_UC_y (int, optional): Number of unit cells in the y direction
@@ -1296,25 +1171,10 @@ def create_device(device_dict,
       bg_coating_ior_dict (dict: dict): Dictionary containing ior 
           definitions for all coating layers present
       bg_color (list): Set the background color (default [1.0,1.0,1.0])
-      use_default_colors (bool): Boolean selects which color set to use.
-          True will assign colors based on the material type ("Si",
-          "SiO2", and "subst").  False will use user-assigned custom
-          colors, which are specified in ``custom_color`` (default True)
-      custom_colors (list): RGBFT values describe a single color. If
-          you set ``use_default_colors=False`` but forget to specify
-          a custom color, it will use #00aaaa (the Windows 95 default
-          desktop color).
-    
-          RGBFT values must be in the range [0,1]. F and T are filter 
-          and transmit, respectively. They are optional and both
-          default to 0 for most finishes.
-      use_finish (str): Select the finish you want. Current options:
-          "material", "Si", "SiO2", "glass", "bright_metal",
-          "dull_metal", "irid", "billiard", "dull", "custom"
-      custom_finish (str): User-defined custom finish. Set 
-          use_finish=custom to call this option. (For anything not 
-          included in ``color_and_finish``; please refer to that 
-          function's docstring for formatting info (default "dull")
+      custom_finish (list): User-defined custom finishes. Accepts a
+          list of entries as ["key", "finish"]. (Please refer to the
+          ``set_color_and_finish`` function and POV-Ray's documentation
+          for custom finish string formatting and possible values
       add_lines (bool, optional): Add accent lines to highlight shape
           edges (default False)
       line_thickness (float, optional): Half-thickness of lines gen-
@@ -1330,25 +1190,13 @@ def create_device(device_dict,
     from os import system
     from copy import deepcopy
     from util import deep_access
-    from util_pov import guess_camera
-    from util_pov import write_header_and_camera, render_pov
+    from util_pov import guess_camera, write_header_and_camera, render_pov
 
-    default_color_dict = {
-            "subst": [0.15, 0.15, 0.15, 0, 0], 
-            "Si":[0.2, 0.2, 0.2, 0, 0], 
-            "SiO2":[0.99, 0.99, 0.96, 0, 0.1]
-            }
+    # Starting the rewriting of color and finish functionality
+    finish_dict = create_finish_dict(custom_finish=custom_finish, 
+                       coating_ior_dict=coating_ior_dict)
 
     number_of_layers = deep_access(device_dict, ['statepoint', 'num_layers'])
-
-    # Set up custom color dictionary
-    orig_custom_colors = deepcopy(custom_colors)
-
-    # Assumes no more than THREE shapes per layer
-    if not use_default_colors:
-        while len(custom_colors) < 3 * number_of_layers:
-            for i in range(len(orig_custom_colors)):
-                custom_colors.append(orig_custom_colors[i])
 
     # Counter for incrementing through colors
     c = 0
@@ -1409,14 +1257,34 @@ def create_device(device_dict,
                     for l in range(2):
                         temp_vecs[k][l] += 0.0002
 
+                # Make sure that coating color is rgbft.
+                #
+                # Override filter and transmit values to match the
+                # "translucent" finish settings if they are set to 0.
+                # This way the user can still specify custom filter
+                # and transmit values, but if they truly want an opaque
+                # coating, they can use something like 0.0000001.
+                coating_color = coating_color_dict[coating_layers[j][0]]
+                if len(coating_color) < 5:
+                    coating_color.append(0)
+                if coating_color[3] == 0:
+                    coating_color[3] = 0.50
+                if coating_color[4] == 0:
+                    coating_color[4] = 0.02
+    
+                coating_finish = coating_layers[j][0]
+
                 device += "// Layer background\n\t"
                 bg_slab, halfwidth = add_slab(temp_vecs, thickness, 
                         device_dims, layer_type="background")
-                bg_slab = color_and_finish(bg_slab, default_color_dict, 
-                        background, use_default_colors = False, 
-                        custom_color = coating_color_dict[background],
-                        ior = coating_ior_dict[background],
-                        use_finish = "translucent")
+#                bg_slab = set_color_and_finish(bg_slab, default_color_dict, 
+#                        background, use_default_colors = False, 
+#                        custom_color = coating_color_dict[background],
+#                        ior = coating_ior_dict[background],
+#                        use_finish = "translucent")
+                bg_slab = set_color_and_finish(bg_slab, 
+                        finish_dict=finish_dict,
+                        feature_color_finish=[coating_color, coating_finish])
 
                 device += bg_slab
 
@@ -1425,9 +1293,10 @@ def create_device(device_dict,
                 end[1] -= 0.00010
 
             # Create all features within a layer
+            ####### Need to pass finish_dict !! set_color_and_finish
             layer, c, device_dims = create_device_layer(shapes, device_dims, 
-                    end, thickness, default_color_dict, use_default_colors, 
-                    custom_colors, c, use_finish, custom_finish, add_lines)
+                    end, thickness, finish_dict, feature_color_finish, c, 
+                    add_lines)
             device += layer
 
     # End unit cell merge
@@ -1484,11 +1353,31 @@ def create_device(device_dict,
             device += "// Coating layer {j+1}\n\t"
             coating, halfwidth = add_slab(temp_vecs, coating_layers[j][1], 
                     coating_dims, layer_type="coating")
-            coating = color_and_finish(coating, default_color_dict, 
-                    background, use_default_colors = False, 
-                    custom_color=coating_color_dict[coating_layers[j][0]], 
-                    ior=coating_ior_dict[coating_layers[j][0]], 
-                    use_finish = "translucent")
+
+            # Make sure that coating color is rgbft.
+            #
+            # Override filter and transmit values to match the
+            # "translucent" finish settings if they are set to 0.
+            # This way the user can still specify custom filter and
+            # transmit values, but if they truly want an opaque 
+            # coating, they can use something like 0.0000001.
+            coating_color = coating_color_dict[coating_layers[j][0]]
+            if len(coating_color) < 5:
+                coating_color.append(0)
+            if coating_color[3] == 0:
+                coating_color[3] = 0.50
+            if coating_color[4] == 0:
+                coating_color[4] = 0.02
+
+            coating_finish = coating_layers[j][0]
+
+#            coating = set_color_and_finish(coating, default_color_dict, 
+#                    background, use_default_colors = False, 
+#                    custom_color=coating_color_dict[coating_layers[j][0]], 
+#                    ior=coating_ior_dict[coating_layers[j][0]], 
+#                    use_finish = "translucent")
+            coating = set_color_and_finish(coating, finish_dict=finish_dict,
+                        feature_color_finish=[coating_color, coating_finish])
             device += coating
 
             coating_dims = update_device_dims(
@@ -1499,7 +1388,7 @@ def create_device(device_dict,
 
     # Substrate
     device += "// Substrate\n\t"
-    material = "subst"
+#    material = "subst"
     thickness_sub = max(1, deep_access(
         device_dict, ['statepoint', 'sub_layer', 'thickness']))
 
@@ -1507,8 +1396,8 @@ def create_device(device_dict,
             temp_vecs, thickness_sub, substrate_dims, layer_type="substrate")
     device += substrate
 
-    device = color_and_finish(device, default_color_dict, material, 
-            use_default_colors = True, use_finish = "dull")
+    device = set_color_and_finish(device, finish_dict=finish_dict,
+            feature_color_finish=[[0.15, 0.15, 0.15, 0, 0], "dull"])
 
     halfwidth = [(0.5 * (lattice_vecs[0][0] + lattice_vecs[1][0])), 
             (0.5 * (lattice_vecs[0][1] + lattice_vecs[1][1]))]
@@ -1528,7 +1417,6 @@ def isosurface_unit_cell(mesh,
         device_dict, 
         n = [0, 0, 0], 
         use_slice_UC = True, 
-        transmit = 0,
         corner1 = [0,0,0], 
         corner2 = [0,0,0], 
         subtract_box = True):
@@ -1539,6 +1427,12 @@ def isosurface_unit_cell(mesh,
     The device color and finish selection is much more limited than
     for normal devices and does not include the ability to replicate
     the unit cell.
+
+    The unit cell and substrate color and finish are hard coded in
+    this function and can only be changed directly in the .pov file.
+    Both use the "dull" finish, and the colors are set as follows:
+    * device color: [0.25, 0.25, 0.25, 0, 0]
+    * substrate color: [0.025, 0.025, 0.025, 0, 0]
     
     The required input information is
     * the isosurface mesh
@@ -1551,9 +1445,6 @@ def isosurface_unit_cell(mesh,
           the isosurface dimensions (Default value = [0)
       slice_UC(bool): Gives you the option to take a slice out of the
           unit cell to help visualize the field (default True)
-      transmit(float, optional): Set transparency of the unit cell 
-          (competely opaque by default); also the color cannot be
-          changed (always a dark-ish grey)
       corner1(list, optional): A corner of the slice you wish to 
           remove/keep, used with corner2 to define a box for an
           intersection or difference object (Default value = [0)
@@ -1571,11 +1462,8 @@ def isosurface_unit_cell(mesh,
     from util_iso import slice_isosurface
     from util_shapes import create_device_layer
 
-    default_color_dict = {
-            "subst": [0.25, 0.25, 0.25, 0, transmit],
-            "Si": [0.25, 0.25, 0.25, 0, transmit],
-            "SiO2": [0.25, 0.25, 0.25, 0, transmit]
-            }
+    # Create the finish dictionary only using "dull"
+    finish_dict = {'dull': ''}
 
     number_of_layers = deep_access(device_dict, ['statepoint', 'num_layers'])
 
@@ -1603,6 +1491,8 @@ def isosurface_unit_cell(mesh,
     device += f"merge {{\n\t"
 
     # Create all layers
+    feature_color_finish=[[[0.25, 0.25, 0.25, 0, 0], "dull"]]
+
     for i in range(number_of_layers):
 
         if deep_access(device_dict, 
@@ -1620,10 +1510,9 @@ def isosurface_unit_cell(mesh,
             device += f"union\n\t{{\n\t"
 
             # Create all features within a layer
-            layer, c, device_dims = create_device_layer(shapes, device_dims,
-                    end, thickness, default_color_dict,
-                    use_default_colors = True, custom_colors = [], c = c,
-                    use_finish = "dull", custom_finish = [], add_lines = [])
+            layer, c, device_dims = create_device_layer(shapes, device_dims, 
+                    end, thickness, finish_dict, feature_color_finish, c, 
+                    add_lines)
             device += layer
 
     # End unit cell merge
@@ -1646,77 +1535,48 @@ def isosurface_unit_cell(mesh,
         device = slice_isosurface(device, corner1, corner2, 
                                   subtract_box = subtract_box)
 
+    # Add substrate
+    feature_color_finish=[[[0.025, 0.025, 0.025, 0, 0], "dull"]]
+
+
     # Append unit cell to mesh object
     mesh += device
 
     return mesh
 
 
-def color_and_finish(dev_string, default_color_dict, material, 
-        use_default_colors, custom_color=[0, 0.6667, 0.667, 0, 0], 
-        ior=1, use_finish="dull", custom_finish=""):
-    """Set object color and finish and return the updated string.
+def create_finish_dict(custom_finish=[], coating_ior_dict=None):
+    """Create dictionary for device finishes.
     
-    Users may specify their own custom color scheme or use the default,
-    which is based on the material type specified in the device file.
-    
-    Color and finish is appended to the device string.
-    
-    Do not remove the underscore from filter_, as this differentiates
-    it from filter, a function in python.
-    
-    Available finishes: see ``use_finish``  parameter for details.
-    Specifying "material" will use the material finish (currently "Si",
-    "SiO2", or "subst") finish in order to accomodate multiple material
-    types in a device. The substrate will always have the "dull" finish.
-    
-    If using the "custom" finish, the finish details must be specified
-    in the custom_finish variable or it will default to "dull".
-    
-    The filter and transmit terms are both 0 by default, with the
-    exception of types requiring transparency, e.g. glass. If you
-    request one of those finishes, the code will overwrite your
-    transmit and filter values. If you do now want this to happen,
-    you should declare your own custom finish.
+    Available default finishes: "Si", "silicon", "SiO2", "translucent",
+        "glass", "bright_metal", "dull_metal", "irid", "billiard", and
+        "dull"
+
+    The "translucent" finish will always have ior=1. If
+    coating_ior_dict exists, the returned dictionary will also
+    contain auto-generated finishes with the same name as the coatings.
+
+    Users may specify their own custom finish with the custom finish
+    variable.
 
     Args:
-      dev_string (str): String describing the device
-      default_color_dict (dict): Dictionary containing default finishes
-          for the various material types
-      use_default_colors (bool): Boolean selects which color set to use.
-          True assigns colors based on the material type ("Si", "SiO2",
-          and "subst"). False uses the user-assigned custom colors.
-      custom_color (list, optional): RGBFT values describe a single 
-          color. If you set ``use_default_colors=False`` but forget to
-          specify a custom color, it uses #00aaaa (the Windows 95
-          default desktop color).
-
-          RGB values must be in the range [0,1]. F and T are filter and
-          transmit, respectively. They are optional and both default 
-          to 0 for most finishes.
-      ior (float, optional): Index of refraction for transparent 
-          finish only (Default value = 1)
-      use_finish (str, optional): Select the finish that you want. 
-          Current options: "material", "Si", "SiO2", "glass", 
-          "bright_metal", "dull_metal", "irid", "billiard", "dull", 
-          "custom" (Default value = "dull")
-      custom_finish (str, optional): User-defined custom finish. Set 
-          use_finish=custom to call this option. (Default value = "")
-      material: 
+      coating_ior_dict (dict, optional): Dictionary containing the
+          coating name and index of refraction for coatings. 
+          (Default value = None)
+      custom_finish (list, optional): User-defined custom finish. List
+          entries must be in the form ["key", "finish_string"]
+          (Default value = [])
 
     Returns:
-      string: Updated device string containing color and finish settings
+      dict: All possible finishes for the device
 
     """
-    # These two values only matter for SiO2, translucent, glass, and irid
-    transmit, filter_ = 0, 0
+    # Create dictionary of finishes
+    finish_keys = []
+    finish_strings = []
 
-    # Set finish
-    if use_finish == "material":
-        use_finish = material
-
-    if use_finish == "Si" or use_finish == "silicon":
-        extra_finish = (f"finish \n\t\t\t{{ \n\t\t\t"
+    # Silicon
+    finish = (f"finish \n\t\t\t{{ \n\t\t\t"
                 + "diffuse 0.2 \n\t\t\t"
                 + "brilliance 5 \n\t\t\t"
                 + "phong 1 \n\t\t\t"
@@ -1727,41 +1587,61 @@ def color_and_finish(dev_string, default_color_dict, material,
                 + f"}}\n\t\t"
                 + f"interior {{ ior 4.24 }}\n\t\t")
                 # IOR taken from blender
-
-    elif use_finish == "SiO2":
-        filter_ = 0.98
-        extra_finish = (f"finish \n\t\t\t{{ \n\t\t\t"
+    finish_keys.append("Si")
+    finish_keys.append("silicon")
+    finish_strings.append(finish)
+    finish_strings.append(finish)
+    
+    # SiO2
+    finish = (f"finish \n\t\t\t{{ \n\t\t\t"
                 + "specular 0.6 \n\t\t\t"
                 + "brilliance 5 \n\t\t\t"
                 + "roughness 0.001 \n\t\t\t"
                 + f"reflection {{ 0.0, 1.0 fresnel on }}\n\t\t\t"
                 + f"}}\n\t\t"
                 + f"interior {{ ior 1.45 }}\n\t\t")
+    finish_keys.append("SiO2")
+    finish_strings.append(finish)
 
-    elif use_finish == "translucent":
-        transmit = 0.02
-        filter_ = 0.50
-        extra_finish = (f"finish \n\t\t\t{{ \n\t\t\t"
+    # Translucent (& coatings)
+    finish_temp = (f"finish \n\t\t\t{{ \n\t\t\t"
                 + "emission 0.25 \n\t\t\t"
                 + "diffuse 0.75 \n\t\t\t"
                 + "specular 0.4 \n\t\t\t"
                 + "brilliance 4 \n\t\t\t"
                 + f"reflection {{ 0.5 fresnel on }}\n\t\t\t"
-                + f"}}\n\t\t"
-                + f"interior {{ ior {ior} }}\n\t\t")
+                + f"}}\n\t\t")
 
-    elif use_finish == "glass":
-        filter_ = 0.95
-        extra_finish = (f"finish \n\t\t\t{{ \n\t\t\t"
+    # Plain old translucent with IOR=1
+    finish = (finish_temp 
+            + f"interior {{ ior 1.0 }}\n\t\t")
+    finish_keys.append("translucent")
+    finish_strings.append(finish)
+
+    # Coating-specific translucent iors
+    # Uses the coating names from coating_ior_dict
+    if coating_ior_dict is not None:
+        coating_list = list(coating_ior_dict.keys())
+        for i in range(len(coating_list)):
+            ior = coating_ior_dict[coating_list[i]]
+            finish = (finish_temp
+                      + f"interior {{ ior {ior} }}\n\t\t")
+            finish_keys.append(coating_list[i])
+            finish_strings.append(finish)
+
+    # Glass
+    finish = (f"finish \n\t\t\t{{ \n\t\t\t"
                 + "specular 0.6 \n\t\t\t"
                 + "phong 0.8 \n\t\t\t"
                 + "brilliance 5 \n\t\t\t"
                 + f"reflection {{ 0.2, 1.0 fresnel on }}\n\t\t\t"
                 + f"}}\n\t\t"
                 + f"interior {{ ior 1.5 }}\n\t\t")
+    finish_keys.append("glass")
+    finish_strings.append(finish)
 
-    elif use_finish == "dull_metal":
-        extra_finish = (f"finish \n\t\t\t{{ \n\t\t\t"
+    # Dull metal
+    finish = (f"finish \n\t\t\t{{ \n\t\t\t"
                 + "emission 0.1 \n\t\t\t"
                 + "diffuse 0.1 \n\t\t\t"
                 + "specular 1.0 \n\t\t\t"
@@ -1769,9 +1649,11 @@ def color_and_finish(dev_string, default_color_dict, material,
                 + "reflection 0.5 metallic \n\t\t\t"
                 + " metallic \n\t\t\t"
                 + f"}}\n\t\t")
+    finish_keys.append("dull_metal")
+    finish_strings.append(finish)
 
-    elif use_finish == "bright_metal":
-        extra_finish = (f"finish \n\t\t\t{{ \n\t\t\t"
+    # Bright metal
+    finish = (f"finish \n\t\t\t{{ \n\t\t\t"
                 + "emission 0.2 \n\t\t\t"
                 + "diffuse 0.3 \n\t\t\t"
                 + "specular 0.8 \n\t\t\t"
@@ -1779,10 +1661,11 @@ def color_and_finish(dev_string, default_color_dict, material,
                 + "reflection 0.5 metallic \n\t\t\t"
                 + " metallic \n\t\t\t"
                 + f"}}\n\t\t")
+    finish_keys.append("bright_metal")
+    finish_strings.append(finish)
 
-    elif use_finish == "irid":
-        filter_ = 0.7
-        extra_finish = (f"finish \n\t\t\t{{ \n\t\t\t"
+    # Irid
+    finish = (f"finish \n\t\t\t{{ \n\t\t\t"
                 + "phong 0.5 \n\t\t\t"
                 + f"reflection {{ 0.2 metallic }}\n\t\t\t"
                 + "diffuse 0.3 \n\t\t\t"
@@ -1790,46 +1673,123 @@ def color_and_finish(dev_string, default_color_dict, material,
                 + f"turbulence 0.5 }}\n\t\t\t"
                 + f"}}\n\t\t"
                 + f"interior {{ ior 1.5 }}\n\t\t")
+    finish_keys.append("irid")
+    finish_strings.append(finish)
 
-    elif use_finish == "billiard":
-        extra_finish = (f"finish \n\t\t\t{{ \n\t\t\t"
+    # Billiard
+    finish = (f"finish \n\t\t\t{{ \n\t\t\t"
                 + "ambient 0.3 \n\t\t\t"
                 + "diffuse 0.8 \n\t\t\t"
                 + "specular 0.2 \n\t\t\t"
                 + "roughness 0.005 \n\t\t\t"
                 + "metallic 0.5 \n\t\t\t"
                 + f"}}\n\t\t")
+    finish_keys.append("billiard")
+    finish_strings.append(finish)
 
-    elif use_finish == "custom":
-        extra_finish = custom_finish
+    # Dull
+    finish_keys.append("dull")
+    finish_strings.append("")
 
-    else:
-        extra_finish = ""
+    # Add custom finishes
+    if custom_finish != []:
+        for i in range(len(custom_finish)):
+            finish_keys.append(custom_finish[i][0])
+            finish_strings.append(custom_finish[i][1])
 
-    # Color declaration for ALL finishes
-    if use_default_colors:
-        color = default_color_dict[material]
-    else:
-        color = custom_color
+    # Create dictionary
+    finish_dict = dict(zip(finish_keys, finish_strings))
 
-    if len(color) == 3:
-        color.append(0)     # filter
-        color.append(0)     # transmit
+    return finish_dict
 
+
+def set_color_and_finish(dev_string, finish_dict = None,
+        feature_color_finish=[[0, 0.6667, 0.667, 0, 0], "dull"]):
+    """Set object color and finish and return the updated string.
+
+    If finish_dict does not exist or is not passed as an argument,
+    this function will generate its own (emergency) version that does
+    NOT contain any custom or coating finishes.
+
+    See create_finish_dict() documentation for the list of available
+    finishes. If the requested finish is not available, it defaults
+    to "dull".
+
+    Color and finish is appended to the device string.
+
+    The filter and transmit terms are both 0 by default, with the
+    exception of types requiring transparency, e.g. glass. If you
+    request one of those finishes, the code will overwrite your
+    transmit and filter values. If you do now want this to happen,
+    you should declare your own custom finish.
+
+    Args:
+      dev_string (str): String describing the device
+      finish_dict (dict): Dictionary containing all relevant finishes
+      feature_color_finish (list): List of all device colors and 
+          finishes, the counter c grabs the appropriate value
+
+    Returns:
+      string: Updated device string containing color and finish settings
+
+    """
+    color = feature_color_finish[0]
+    use_finish = feature_color_finish[1]
+
+    print(color)
+
+
+    # Create the finish dictionary if it doesn't already exist.
+    #
+    # The finish_dict does not include custom finishes or coatings if
+    # created here. This is more of an emergency backup plan than
+    # anything. I may eventually make it raise an exception instead.
+    if finish_dict == None:
+        finish_dict = create_finish_dict()
+
+    # Make sure that the selected finish is in finish_dict
+    if use_finish not in finish_dict:
+        use_finish = "dull"
+
+    # Make sure that color is in rgbft format (5 entries).
+    # Code will set color to the Windows95 background color as 
+    # punishment if the color list has too many values.
+    # I should probably change it to raise an exception, but eh.
+    if len(color) < 5:
+        while len(color) != 5:
+            color.append(0)
+    elif len(color) > 5:
+        color = [0, 0.6667, 0.667, 0, 0]
+
+    # The filter and transmit values matter for the "SiO2", "glass",
+    # "translucent", and "irid" finishes, and this function will
+    # override anything specified by the user!
+    #
+    # All other finishes (including coatings): filter and transmit are
+    # set to 0 by default, but the user may specify other values. The
+    # code will never override these values for these finishes.
+    #
+    # color[3] is filter, color[4] is transmit
     if use_finish in ["SiO2", "translucent", "glass", "irid"]: 
-        print("\nWARNING: color_and_finish overriding transmit/filter value!!")
-        color[3] = transmit
-        color[4] = filter_
+        print("\nWARNING: Overriding the transmit and/or filter values!!")
+        if use_finish == "SiO2":
+            color[3] = 0.98
+        elif use_finish == "translucent":
+            color[4] = 0.02
+            color[3] = 0.50
+        elif use_finish == "glass":
+            color[3] = 0.95
+        elif use_finish == "irid":
+            color[3] = 0.7
 
     dev_string += (f"pigment {{ color rgbft "
             + f"<{color[0]}, {color[1]}, {color[2]}, {color[3]}, {color[4]}>"
             + f" }}\n\t\t")
 
-    # Add the extra bits describing the finish
-    #if use_finish != "dull":
-    if extra_finish:
-        dev_string += extra_finish 
+    # Add finish
+    dev_string += finish_dict[use_finish]
 
+    # Close object
     dev_string += f"}}\n\n\t"
 
     return dev_string
