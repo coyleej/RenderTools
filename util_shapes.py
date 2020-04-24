@@ -25,7 +25,7 @@ A quick summary:
   * create_finish_dict creates a dictionary containing the default,
     custom, and coating finishes as relevant
   * set_color_and_finish sets the color and finish based on values 
-    specified by the user
+    specified by the user and available in finish_dict
 """
 
 def create_cylinder(center, end, radius, for_silo=False):
@@ -551,7 +551,8 @@ def add_accent_lines(shape, z_top, center, dims, feature_height, angle=0,
 #            # Again, not used because there's not a way to only place
 #            # them where it makes sense
 #            #
-#            # May eventually have the code output this to stdout
+#            # May eventually output this to stdout should the user
+#            # want to add them manually
 #            line += (f"object {{ Zcyl "
 #                    + "translate "
 #                    + f"<{vector1:.6f}, {vector2:.6f}, {0:.6f}>"
@@ -1044,7 +1045,10 @@ def create_device_layer(shapes, device_dims, end, thickness,
       finish_dict (dict): Dictionary containing all relevant finishes
       feature_color_finish (list): List of all device colors and 
           finishes, the counter c grabs the appropriate value
-      c (int): Counter iterating though custom_color
+      c (int): Counter iterating though custom_color, resets to 0 when
+          equal to ``len(feature_color_finish)`` to prevent overflow
+          errors and force the code to cycle through the color list
+          again
       add_lines (bool, optional): Option to add the accent lines to 
           the feature (default False)
 
@@ -1073,6 +1077,9 @@ def create_device_layer(shapes, device_dims, end, thickness,
     # Write device layers
     device_layer = ""
     for k in range(len(layer_type)):
+
+        if c == len(feature_color_finish):
+            c = 0
 
         if layer_type[k] == "circle":
             feature, c, device_dims = write_circle_feature(shapes, k, 
@@ -1166,11 +1173,10 @@ def create_device(device_dict,
       coating_layers (list, optional): List containing material and
           thickness of each layer, starting with the bottom layer and
           working up (Default value = [])
-      bg_coating_color_dict (dict: dict): Dictionary of color def-
+      coating_color_dict (dict: dict): Dictionary of color def-
           initions for all coating layers present
-      bg_coating_ior_dict (dict: dict): Dictionary containing ior 
+      coating_ior_dict (dict: dict): Dictionary containing ior 
           definitions for all coating layers present
-      bg_color (list): Set the background color (default [1.0,1.0,1.0])
       custom_finish (list): User-defined custom finishes. Accepts a
           list of entries as ["key", "finish"]. (Please refer to the
           ``set_color_and_finish`` function and POV-Ray's documentation
@@ -1277,11 +1283,6 @@ def create_device(device_dict,
                 device += "// Layer background\n\t"
                 bg_slab, halfwidth = add_slab(temp_vecs, thickness, 
                         device_dims, layer_type="background")
-#                bg_slab = set_color_and_finish(bg_slab, default_color_dict, 
-#                        background, use_default_colors = False, 
-#                        custom_color = coating_color_dict[background],
-#                        ior = coating_ior_dict[background],
-#                        use_finish = "translucent")
                 bg_slab = set_color_and_finish(bg_slab, 
                         finish_dict=finish_dict,
                         feature_color_finish=[coating_color, coating_finish])
@@ -1371,11 +1372,6 @@ def create_device(device_dict,
 
             coating_finish = coating_layers[j][0]
 
-#            coating = set_color_and_finish(coating, default_color_dict, 
-#                    background, use_default_colors = False, 
-#                    custom_color=coating_color_dict[coating_layers[j][0]], 
-#                    ior=coating_ior_dict[coating_layers[j][0]], 
-#                    use_finish = "translucent")
             coating = set_color_and_finish(coating, finish_dict=finish_dict,
                         feature_color_finish=[coating_color, coating_finish])
             device += coating
@@ -1388,7 +1384,6 @@ def create_device(device_dict,
 
     # Substrate
     device += "// Substrate\n\t"
-#    material = "subst"
     thickness_sub = max(1, deep_access(
         device_dict, ['statepoint', 'sub_layer', 'thickness']))
 
@@ -1443,7 +1438,7 @@ def isosurface_unit_cell(mesh,
       device_dict(dict: dict): Dictionary entry from a json file
       n(list, optional): Dimensions of the numpy field array, used as
           the isosurface dimensions (Default value = [0)
-      slice_UC(bool): Gives you the option to take a slice out of the
+      use_slice_UC(bool): Gives you the option to take a slice out of the
           unit cell to help visualize the field (default True)
       corner1(list, optional): A corner of the slice you wish to 
           remove/keep, used with corner2 to define a box for an
@@ -1494,9 +1489,9 @@ def isosurface_unit_cell(mesh,
     feature_color_finish=[[[0.25, 0.25, 0.25, 0, 0], "dull"]]
 
     for i in range(number_of_layers):
-
         if deep_access(device_dict, 
-                ['statepoint', 'dev_layers', str(i)]).get('shapes') is not None:
+                ['statepoint', 'dev_layers', 
+                    str(i)]).get('shapes') is not None:
             shapes = deep_access(device_dict, 
                     ['statepoint', 'dev_layers', str(i), 'shapes'])
             background = deep_access(device_dict, 
@@ -1538,7 +1533,6 @@ def isosurface_unit_cell(mesh,
     # Add substrate
     feature_color_finish=[[[0.025, 0.025, 0.025, 0, 0], "dull"]]
 
-
     # Append unit cell to mesh object
     mesh += device
 
@@ -1552,12 +1546,16 @@ def create_finish_dict(custom_finish=[], coating_ior_dict=None):
         "glass", "bright_metal", "dull_metal", "irid", "billiard", and
         "dull"
 
-    The "translucent" finish will always have ior=1. If
-    coating_ior_dict exists, the returned dictionary will also
+    The "translucent" finish will always have ior=1. 
+
+    If coating_ior_dict exists, the returned dictionary will also
     contain auto-generated finishes with the same name as the coatings.
 
     Users may specify their own custom finish with the custom finish
     variable.
+
+    If the users ever attempts to call a finish not in this dictionary,
+    the feature will use the "dull" finish by default.
 
     Args:
       coating_ior_dict (dict, optional): Dictionary containing the
@@ -1603,7 +1601,7 @@ def create_finish_dict(custom_finish=[], coating_ior_dict=None):
     finish_keys.append("SiO2")
     finish_strings.append(finish)
 
-    # Translucent (& coatings)
+    # Translucent and coatings base string, no IOR
     finish_temp = (f"finish \n\t\t\t{{ \n\t\t\t"
                 + "emission 0.25 \n\t\t\t"
                 + "diffuse 0.75 \n\t\t\t"
@@ -1612,14 +1610,14 @@ def create_finish_dict(custom_finish=[], coating_ior_dict=None):
                 + f"reflection {{ 0.5 fresnel on }}\n\t\t\t"
                 + f"}}\n\t\t")
 
-    # Plain old translucent with IOR=1
+    # Plain old translucent (IOR=1)
     finish = (finish_temp 
             + f"interior {{ ior 1.0 }}\n\t\t")
     finish_keys.append("translucent")
     finish_strings.append(finish)
 
-    # Coating-specific translucent iors
-    # Uses the coating names from coating_ior_dict
+    # Coating-specific translucent (specified IORs)
+    # Grabs coating names from coating_ior_dict
     if coating_ior_dict is not None:
         coating_list = list(coating_ior_dict.keys())
         for i in range(len(coating_list)):
@@ -1711,23 +1709,26 @@ def set_color_and_finish(dev_string, finish_dict = None,
     this function will generate its own (emergency) version that does
     NOT contain any custom or coating finishes.
 
-    See create_finish_dict() documentation for the list of available
-    finishes. If the requested finish is not available, it defaults
-    to "dull".
+    See the ``create_finish_dict()`` documentation for the list of 
+    available finishes. If the requested finish is not available, it 
+    defaults to "dull".
 
-    Color and finish is appended to the device string.
+    The device color and finish is appended to the device string.
 
     The filter and transmit terms are both 0 by default, with the
-    exception of types requiring transparency, e.g. glass. If you
-    request one of those finishes, the code will overwrite your
-    transmit and filter values. If you do now want this to happen,
-    you should declare your own custom finish.
+    exception of types requiring transparency: "SiO2", "translucent",
+    all coating finishes, "glass", and "irid". If you request one of
+    those finishes, the code will overwrite your transmit and filter
+    values. If you do now want this to happen, you should declare your
+    own custom finish. All other finishes, including custom ones, use
+    the filter and transmit values specified by the user.
 
     Args:
       dev_string (str): String describing the device
-      finish_dict (dict): Dictionary containing all relevant finishes
-      feature_color_finish (list): List of all device colors and 
-          finishes, the counter c grabs the appropriate value
+      finish_dict (dict, optional): Dictionary containing all
+          relevant finishes
+      feature_color_finish (list, optional): List of all device colors
+          and finishes, the counter c grabs the appropriate value
 
     Returns:
       string: Updated device string containing color and finish settings
