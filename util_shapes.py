@@ -1451,10 +1451,12 @@ def isosurface_unit_cell(mesh,
     """Generate a device string for use with isosurfaces.
     
     This function is meant only for use with isosurfaces because the
-    isosurface center and scaling is different than the normal method.
-    The device color and finish selection is much more limited than
-    for normal devices and does not include the ability to replicate
-    the unit cell.
+    isosurface center and scaling is different than normal devices.
+    The device color and finish selection is hard coded in, as the
+    unit cell is not the focus of the rendering with isosurfaces.
+    This function does not include the ability to replicate the unit
+    cell or the abiility to add accent lines. It does, however,
+    automatically add a substrate.
 
     The unit cell and substrate color and finish are hard coded in
     this function and can only be changed directly in the .pov file.
@@ -1465,14 +1467,16 @@ def isosurface_unit_cell(mesh,
     The required input information is
     * the isosurface mesh
     * the device dictionary
+    * the isosurface dimensions
 
     Args:
       mesh(str): the mesh object describing the isosurface
       device_dict(dict: dict): Dictionary entry from a json file
       n(list): Dimensions of the numpy field array as [nx, ny, nz],
           used as the isosurface dimensions
-      use_slice_UC(bool): Gives you the option to take a slice out of the
-          unit cell to help visualize the field (default True)
+      use_slice_UC(bool, optional): Gives you the option to take a
+          slice out of the unit cell to help visualize the field
+          (default True)
       corner1(list, optional): A corner of the slice you wish to 
           remove/keep, used with corner2 to define a box for an
           intersection or difference object (Default value = [0)
@@ -1540,7 +1544,7 @@ def isosurface_unit_cell(mesh,
             # Create all features within a layer
             layer, c, device_dims = create_device_layer(shapes, device_dims, 
                     end, thickness, finish_dict, feature_color_finish, c, 
-                    add_lines)
+                    add_lines=False)
             device += layer
 
     # End unit cell merge
@@ -1566,8 +1570,23 @@ def isosurface_unit_cell(mesh,
     # Add substrate
     feature_color_finish=[[[0.025, 0.025, 0.025, 0, 0], "dull"]]
 
+    lattice_x = lattice_vecs[0][0] + lattice_vecs[1][0]
+    lattice_y = lattice_vecs[1][0] + lattice_vecs[1][1]
+    for i in range(2):
+        if lattice_vecs[i][0] != 0:
+            lattice_vecs[i][0] = n[0] * lattice_x / lattice_vecs[i][0]
+        if lattice_vecs[i][1] != 0:
+            lattice_vecs[i][1] = n[1] * lattice_y / lattice_vecs[i][1]
+
+    (substrate, garbage) = add_slab(lattice_vecs, thickness=n[2]/3.5,
+            device_dims=n, layer_type="isosurface")
+
+    substrate = set_color_and_finish(substrate, finish_dict=finish_dict,
+            feature_color_finish=[[0.025, 0.025, 0.025, 0, 0], "dull"])
+
     # Append unit cell to mesh object
     mesh += device
+    mesh += substrate 
 
     return mesh
 

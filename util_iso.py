@@ -223,7 +223,7 @@ def slice_isosurface(mesh, corner1, corner2, subtract_box=False):
     rect_string += f"\n\t}}"
 
     # Create the intersection
-    mesh = f"intersection {{" + mesh +  rect_string + f"\n}}"
+    mesh = f"intersection {{" + mesh +  rect_string + f"\n}}\n\n\t"
 
     return mesh
 
