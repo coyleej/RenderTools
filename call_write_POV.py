@@ -1,6 +1,6 @@
 import signac
 from util_shapes import create_device
-from util_pov import write_header_and_camera, render_pov
+from util_pov import write_header_and_camera, write_pov_file, render_pov
 from os import system
 
 # RECTANGLE
@@ -106,9 +106,7 @@ header = write_header_and_camera(device_dims,
         bg_color = [], 
         shadowless = False)
 
-fID = open(pov_name,'w')
-fID.write(header + device)
-fID.close()
+write_pov_file(pov_name, header+device)
 
 # Render the device
 render_pov(pov_name, image_name, height, width, 

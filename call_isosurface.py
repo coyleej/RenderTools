@@ -8,7 +8,7 @@ import signac
 from util import deep_access
 from util_iso import create_mesh2, slice_isosurface, process_field_array
 from util_iso import extract_e_field, calc_field_mag
-from util_pov import write_header_and_camera, render_pov
+from util_pov import write_header_and_camera, write_pov_file, render_pov
 from util_shapes import create_device_layer, isosurface_unit_cell
 from util_shapes import add_slab, set_color_and_finish 
 
@@ -119,9 +119,7 @@ header = write_header_and_camera(device_dims=[nx, ny, nz],
         camera_rotate=35, 
         isosurface=True)
 
-fID = open(pov_name, 'w')
-fID.write(header + mesh)
-fID.close()
+write_pov_file(pov_name, header+mesh)
 
 # Render
 render_pov(pov_name, image_name, height, width, display,

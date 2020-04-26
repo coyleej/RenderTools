@@ -228,6 +228,28 @@ def write_header_and_camera(device_dims, coating_dims=[0, 0, 0],
     return header
 
 
+def write_pov_file(pov_name, pov_string):
+    """Writes a .pov file using the input string.
+
+    Must contain the header, camera information, and device description
+    for the file to render successfully. This function does NOT check
+    that all information is included. The information is written to
+    the name specified in pov_name.
+
+    Args:
+      pov_name (string): Name to give the .pov file
+      pov_string (string): String describing the header, camera
+          information, and the device string
+
+    Returns:
+
+    """
+    fileID = open(pov_name, "w")
+    fileID.write(pov_string)
+    fileID.close()
+    return
+
+
 def render_pov(pov_name, image_name, height, width,
         display=False, transparent=True, antialias=True,
         num_threads=0, open_png=True, render=True, 
