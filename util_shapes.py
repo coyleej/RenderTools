@@ -1162,7 +1162,8 @@ def create_device(device_dict,
     coating_ior_dict={"translucent":1.0}, 
     custom_finish="", 
     add_lines=False,
-    line_settings=[[0, 0, 0], 0.0020]):
+    line_color=[0, 0, 0],
+    line_thickness=0.0020):
     """Generates a string containing the device information.
     
     The required input information is
@@ -1211,9 +1212,10 @@ def create_device(device_dict,
           for custom finish string formatting and possible values
       add_lines (bool, optional): Add accent lines to highlight shape
           edges (default False)
-      line_settings (list, optional): Option to set the color (as rbg,
-          always fully opaque) and line thickness of accent lines 
-          (default [[0,0,0], 0.0020])
+      line_color(list, optional): Option to set accent line color as
+          rbg, always fully opaque (default [0,0,0])
+      line_thickness(float, optional): Option to set accent line 
+          thickness (default 0.0020)
 
     Returns:
       tuple: a string describing the device, updated device dimensions,
@@ -1224,6 +1226,10 @@ def create_device(device_dict,
     from copy import deepcopy
     from util import deep_access
     from util_pov import guess_camera, write_header_and_camera, render_pov
+
+    # Combine accent line color and thickness into a single variable
+    # to simplify variable passing
+    line_settings=[line_color, line_thickness]
 
     # Starting the rewriting of color and finish functionality
     finish_dict = create_finish_dict(custom_finish=custom_finish, 

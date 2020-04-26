@@ -27,6 +27,10 @@ device_id = "318a5dce269fc505ef665148c36a7677"
 #json_file = "DeviceFiles/device_batman/device.index.json.gz"
 #device_id = "1fdbcb094cd9fd4a1a39d63ca957c988"
 
+# MOTHEYE
+json_file = "DeviceFiles/MothEye/device.index.json.gz"
+device_id = "12b881f6b38c677000cf1e85818a0332"      # original device
+
 ####################################################
 
 name = "test_3x3"
@@ -58,18 +62,6 @@ extra_coatings = [  ]
 #        ["coating1", 0.308],
 #        ["coating3", 0.130]]
 
-#extra_coatings = [ 
-#        ["coating1", 0.01824],
-#        ["coating2", 0.04277],
-#        ["coating1", 0.02885],
-#        ["coating2", 0.04662],
-#        ["coating1", 0.02885],
-#        ["coating2", 0.04662],
-#        ["coating1", 0.02885],
-#        ["coating2", 0.05224],
-#        ["coating1", 0.01557],
-#        ["coating3", 0.130]]
-
 # Coating color and ior definitions
 bg_coating_ior_dict = { 
         "coating1":1.20,
@@ -81,8 +73,7 @@ bg_coating_color_dict = {
         "coating2":[0.1, 1.0, 0.1, 0, 0],
         "coating3":[0.1, 0.1, 1.0, 0, 0]}
 
-
-#### Render things ####
+# Render things #
 
 # Create device string and output the device dimensions
 #device, device_dims, coating_dims = write_pov(device_dict, 
@@ -94,7 +85,9 @@ device, device_dims, coating_dims = create_device(
         coating_layers = extra_coatings, 
         coating_color_dict = bg_coating_color_dict,
         coating_ior_dict = bg_coating_ior_dict,
-        add_lines = True)
+        add_lines = True,
+        line_color = [1,1,1],
+        line_thickness = 0.0020)
 #        custom_finish = extra_finish, 
 
 # Generate a header with the camera and lighting information
