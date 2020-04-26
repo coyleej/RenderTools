@@ -323,7 +323,7 @@ def create_sphere(radius, center, color=[0,0,0]):
 
 
 def add_accent_lines(shape, z_top, center, dims, feature_height, angle=0, 
-        line_thickness=0.0020, color=[0,0,0]):
+        line_settings=[[0,0,0], 0.0020]):
     """Generate and return feature accent lines.
     
     Users can optionally add lines to accentuate device features and
@@ -344,10 +344,9 @@ def add_accent_lines(shape, z_top, center, dims, feature_height, angle=0,
           rectangles and polygons)
       angle (float, optional): Rotation angle of feature in degrees
           (default 0)
-      line_thickness (float, optional): Thickness of the line to add
-          (default 0.0020)
-      color (list): Color of line to add, as rgb (default [0,0,0],
-          a.k.a. black)
+      line_settings (list, optional): Option to set the color (as rbg,
+          always fully opaque) and line thickness of accent lines 
+          (default [[0,0,0], 0.0020])
 
     Returns:
       string: Accent lines for the feature
@@ -359,6 +358,9 @@ def add_accent_lines(shape, z_top, center, dims, feature_height, angle=0,
 
     # Just doublechecking, because I've screwed this up before
     feature_height = abs(feature_height)
+
+    color = line_settings[0]
+    line_thickness = line_settings[1]
 
     # Must make negative to appear in proper location
     # (Reason: Top of device located at z=0 and builds down.
@@ -588,7 +590,8 @@ def update_device_dims(device_dims, new_x, new_y, new_z):
 
 
 def write_circle_feature(shapes, k, device_dims, end, 
-        finish_dict, feature_color_finish, c, add_lines=False):
+        finish_dict, feature_color_finish, c, add_lines=False,
+        line_settings=[[0, 0, 0], 0.0020]):
     """Creates a circle feature within a layer.
     
     Includes with color and finish specifications.
@@ -604,6 +607,9 @@ def write_circle_feature(shapes, k, device_dims, end,
       c (int): Counter iterating though custom_color
       add_lines (bool, optional): Option to add the accent lines to 
           the feature (default False)
+      line_settings (list, optional): Option to set the color (as rbg,
+          always fully opaque) and line thickness of accent lines 
+          (default [[0,0,0], 0.0020])
 
     Returns:
       str: String with circle feature information
@@ -625,7 +631,7 @@ def write_circle_feature(shapes, k, device_dims, end,
     # Add lines to the top and bottom of the feature
     if add_lines == True:
         lines = add_accent_lines("circle", device_dims[2], center, 
-                radius, (end[1]-end[0]))
+                radius, (end[1]-end[0]), line_settings=line_settings)
         circle += lines
 
     device_dims = update_device_dims(device_dims, radius, radius, 0)
@@ -634,7 +640,8 @@ def write_circle_feature(shapes, k, device_dims, end,
 
 
 def write_ellipse_feature(shapes, k, device_dims, end, 
-        finish_dict, feature_color_finish, c, add_lines=False):
+        finish_dict, feature_color_finish, c, add_lines=False,
+        line_settings=[[0, 0, 0], 0.0020]):
     """Create an ellipse feature within a layer.
     
     Includes color and finish specifications.
@@ -650,6 +657,9 @@ def write_ellipse_feature(shapes, k, device_dims, end,
       c (int): Counter iterating though custom_color
       add_lines (bool, optional): Option to add the accent lines to 
           the feature (default False)
+      line_settings (list, optional): Option to set the color (as rbg,
+          always fully opaque) and line thickness of accent lines 
+          (default [[0,0,0], 0.0020])
 
     Returns:
       str: String with ellipse feature information
@@ -674,7 +684,8 @@ def write_ellipse_feature(shapes, k, device_dims, end,
     # Add lines to the top and bottom of the feature
     if add_lines == True:
         lines = add_accent_lines("ellipse", device_dims[2], center, 
-                halfwidths, (end[1]-end[0]), angle=angle)
+                halfwidths, (end[1]-end[0]), angle=angle,
+                line_settings=line_settings)
         ellipse += lines
 
     device_dims = update_device_dims(
@@ -684,7 +695,8 @@ def write_ellipse_feature(shapes, k, device_dims, end,
 
 
 def write_rectangle_feature(shapes, k, device_dims, end, 
-        finish_dict, feature_color_finish, c, add_lines=False):
+        finish_dict, feature_color_finish, c, add_lines=False,
+        line_settings=[[0, 0, 0], 0.0020]):
     """Creates a rectangle feature within a layer.
     
     Includes color and finish specifications.
@@ -700,6 +712,9 @@ def write_rectangle_feature(shapes, k, device_dims, end,
       c (int): Counter iterating though custom_color
       add_lines (bool, optional): Option to add the accent lines to 
           the feature (default False)
+      line_settings (list, optional): Option to set the color (as rbg,
+          always fully opaque) and line thickness of accent lines 
+          (default [[0,0,0], 0.0020])
 
     Returns:
       str: String containing rectangle feature
@@ -724,7 +739,8 @@ def write_rectangle_feature(shapes, k, device_dims, end,
     # Add lines edges of the feature
     if add_lines == True:
         lines = add_accent_lines("rectangle", device_dims[2], center, 
-                halfwidths, (end[1]-end[0]), angle=angle)
+                halfwidths, (end[1]-end[0]), angle=angle,
+                line_settings=line_settings)
         rectangle += lines
 
     device_dims = update_device_dims(
@@ -734,7 +750,8 @@ def write_rectangle_feature(shapes, k, device_dims, end,
 
 
 def write_polygon_feature(shapes, k, device_dims, end, 
-        finish_dict, feature_color_finish, c, add_lines=False):
+        finish_dict, feature_color_finish, c, add_lines=False,
+        line_settings=[[0, 0, 0], 0.0020]):
     """Create a polygon feature, with color and finish.
     
     The polygon vertices must be specified in counter-clockwise order
@@ -752,6 +769,9 @@ def write_polygon_feature(shapes, k, device_dims, end,
       c (int): Counter iterating though custom_color
       add_lines (bool, optional): Option to add the accent lines to 
           the feature (default False)
+      line_settings (list, optional): Option to set the color (as rbg,
+          always fully opaque) and line thickness of accent lines 
+          (default [[0,0,0], 0.0020])
 
     Returns:
       str: String with polygon feature information
@@ -794,7 +814,8 @@ def write_polygon_feature(shapes, k, device_dims, end,
     # Add lines edges of the feature
     if add_lines == True:
         lines = add_accent_lines("polygon", device_dims[2], center, 
-                vertices, (end[1]-end[0]), angle=angle)
+                vertices, (end[1]-end[0]), angle=angle,
+                line_settings=line_settings)
         polygon += lines
 
     device_dims = update_device_dims(device_dims, x_max, y_max, 0)
@@ -849,7 +870,8 @@ def check_for_false_silos(shapes, layer_type):
 
 
 def write_silo_feature(shapes, k, layer_type, device_dims, end, 
-        finish_dict, feature_color_finish, c, add_lines=False):
+        finish_dict, feature_color_finish, c, add_lines=False,
+        line_settings=[[0, 0, 0], 0.0020]):
     """Create a silo feature, with color and finish.
     
     Creates a silo. Should be able to handle any possible combination
@@ -867,6 +889,9 @@ def write_silo_feature(shapes, k, layer_type, device_dims, end,
       c (int): Counter iterating though custom_color
       add_lines (bool, optional): Option to add the accent lines to 
           the feature (default False)
+      line_settings (list, optional): Option to set the color (as rbg,
+          always fully opaque) and line thickness of accent lines 
+          (default [[0,0,0], 0.0020])
 
     Returns:
       tuple: a string describing the silo, the color counter, and
@@ -940,7 +965,7 @@ def write_silo_feature(shapes, k, layer_type, device_dims, end,
     # Also storing outer radius for later
     if add_lines == True:
         lines = add_accent_lines(shape, device_dims[2], center, 
-                dims_outer, (end[1]-end[0]))
+                dims_outer, (end[1]-end[0]), line_settings=line_settings)
 
     # Hole(s)
     # Required for the hole pass to through the ends of the first shape
@@ -1008,7 +1033,7 @@ def write_silo_feature(shapes, k, layer_type, device_dims, end,
         # Create inner lines and append to the silo master list
         if add_lines == True:
             lines_inner = add_accent_lines(shape, device_dims[2], center, 
-                    dims_inner, (end[1]-end[0]))
+                    dims_inner, (end[1]-end[0]), line_settings=line_settings)
             lines += lines_inner
 
         j += 1
@@ -1030,7 +1055,8 @@ def write_silo_feature(shapes, k, layer_type, device_dims, end,
 
 
 def create_device_layer(shapes, device_dims, end, thickness,
-        finish_dict, feature_color_finish, c, add_lines=False):
+        finish_dict, feature_color_finish, c, add_lines=False,
+        line_settings=[[0, 0, 0], 0.0020]):
     """Generate a single layer of a device.
     
     Called by create_device, which creates the full unit cell. Adds a
@@ -1051,6 +1077,9 @@ def create_device_layer(shapes, device_dims, end, thickness,
           again
       add_lines (bool, optional): Option to add the accent lines to 
           the feature (default False)
+      line_settings (list, optional): Option to set the color (as rbg,
+          always fully opaque) and line thickness of accent lines 
+          (default [[0,0,0], 0.0020])
 
     Returns:
       tuple: a string describing the silo, the color counter, and
@@ -1084,31 +1113,31 @@ def create_device_layer(shapes, device_dims, end, thickness,
         if layer_type[k] == "circle":
             feature, c, device_dims = write_circle_feature(shapes, k, 
                     device_dims, end, finish_dict, feature_color_finish, 
-                    c, add_lines)
+                    c, add_lines, line_settings)
             device_layer += feature
 
         elif layer_type[k] == "silo":
             feature, c, device_dims = write_silo_feature(shapes, k,
                     layer_type, device_dims, end, finish_dict,
-                    feature_color_finish, c, add_lines)
+                    feature_color_finish, c, add_lines, line_settings)
             device_layer += feature
 
         elif layer_type[k] == "ellipse":
             feature, c, device_dims = write_ellipse_feature(shapes, k, 
                     device_dims, end,  finish_dict, feature_color_finish, 
-                    c, add_lines)
+                    c, add_lines, line_settings)
             device_layer += feature
 
         elif layer_type[k] == "rectangle":
             feature, c, device_dims = write_rectangle_feature(shapes, k, 
                     device_dims, end, finish_dict, feature_color_finish, 
-                    c, add_lines)
+                    c, add_lines, line_settings)
             device_layer += feature
 
         elif layer_type[k] == "polygon":
             feature, c, device_dims = write_polygon_feature(shapes, k, 
                     device_dims, end, finish_dict, feature_color_finish,
-                    c, add_lines)
+                    c, add_lines, line_settings)
             device_layer += feature
 
         elif layer_type[k] == "Vacuum":
@@ -1133,8 +1162,7 @@ def create_device(device_dict,
     coating_ior_dict={"translucent":1.0}, 
     custom_finish="", 
     add_lines=False,
-    line_thickness=0.0020,
-    line_color=[0, 0, 0, 0, 0]):
+    line_settings=[[0, 0, 0], 0.0020]):
     """Generates a string containing the device information.
     
     The required input information is
@@ -1157,7 +1185,7 @@ def create_device(device_dict,
     * the coating dimensions (coating_dims)
 
     Args:
-      device_dict (dict: dict): Dictionary entry from a json file
+      device_dict (dict): Dictionary entry from a json file
       feature_color_finish (list): List of all device colors and 
           finishes, the counter c grabs the appropriate value
       num_UC_x (int, optional): Number of unit cells in the y direction
@@ -1183,10 +1211,9 @@ def create_device(device_dict,
           for custom finish string formatting and possible values
       add_lines (bool, optional): Add accent lines to highlight shape
           edges (default False)
-      line_thickness (float, optional): Half-thickness of lines gen-
-          erated when add_lines=True (default 0.0020)
-      line_color(list, optional): Color (rgbft) of lines used when 
-          add_lines=True (default [0, 0, 0, 0, 0] (opaque black))
+      line_settings (list, optional): Option to set the color (as rbg,
+          always fully opaque) and line thickness of accent lines 
+          (default [[0,0,0], 0.0020])
 
     Returns:
       tuple: a string describing the device, updated device dimensions,
@@ -1297,7 +1324,7 @@ def create_device(device_dict,
             ####### Need to pass finish_dict !! set_color_and_finish
             layer, c, device_dims = create_device_layer(shapes, device_dims, 
                     end, thickness, finish_dict, feature_color_finish, c, 
-                    add_lines)
+                    add_lines, line_settings)
             device += layer
 
     # End unit cell merge
@@ -1363,7 +1390,7 @@ def create_device(device_dict,
             # transmit values, but if they truly want an opaque 
             # coating, they can use something like 0.0000001.
             coating_color = coating_color_dict[coating_layers[j][0]]
-            if len(coating_color) < 5:
+            while len(coating_color) < 5:
                 coating_color.append(0)
             if coating_color[3] == 0:
                 coating_color[3] = 0.50
@@ -1410,11 +1437,11 @@ def create_device(device_dict,
 
 def isosurface_unit_cell(mesh, 
         device_dict, 
-        n = [0, 0, 0], 
-        use_slice_UC = True, 
-        corner1 = [0,0,0], 
-        corner2 = [0,0,0], 
-        subtract_box = True):
+        n, 
+        use_slice_UC=True, 
+        corner1=[0,0,0], 
+        corner2=[0,0,0], 
+        subtract_box=True):
     """Generate a device string for use with isosurfaces.
     
     This function is meant only for use with isosurfaces because the
@@ -1436,8 +1463,8 @@ def isosurface_unit_cell(mesh,
     Args:
       mesh(str): the mesh object describing the isosurface
       device_dict(dict: dict): Dictionary entry from a json file
-      n(list, optional): Dimensions of the numpy field array, used as
-          the isosurface dimensions (Default value = [0)
+      n(list): Dimensions of the numpy field array as [nx, ny, nz],
+          used as the isosurface dimensions
       use_slice_UC(bool): Gives you the option to take a slice out of the
           unit cell to help visualize the field (default True)
       corner1(list, optional): A corner of the slice you wish to 
@@ -1735,10 +1762,11 @@ def set_color_and_finish(dev_string, finish_dict = None,
 
     """
     color = feature_color_finish[0]
+    assert isinstance(color, list),"Error: feature color is not a list"
+    assert len(color) in range(3,6),"Error: color list is too short/long"
+
     use_finish = feature_color_finish[1]
-
-    print(color)
-
+    assert isinstance(use_finish, str),"Error: finish type must be a string"
 
     # Create the finish dictionary if it doesn't already exist.
     #
