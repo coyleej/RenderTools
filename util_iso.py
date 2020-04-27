@@ -54,7 +54,6 @@ def create_mesh2(field, cutoffs, colormap="viridis", transmit=0.4,
       string: mesh2 object as a string
 
     """
-#    import numpy as np
     from skimage.measure import marching_cubes_lewiner
     from os import system
     import pylab
@@ -86,10 +85,7 @@ def create_mesh2(field, cutoffs, colormap="viridis", transmit=0.4,
         cmap_limits[1] = max(cutoffs)
 
 
-
-
-    print(cmap_limits)
-
+#    print(cmap_limits)
 
 
 
@@ -117,17 +113,13 @@ def create_mesh2(field, cutoffs, colormap="viridis", transmit=0.4,
         corners, faces, normals, values = marching_cubes_lewiner(
                 field, cutoffs[i])
 
-        print(f"\nIsosurface value: {cutoffs}")
-        print(f"{corners} corners")
-        print(f"{faces} faces")
-
-
-
-        print(color)
-
+        print(f"Isosurface value: {cutoffs[i]}")
+        #print(f"{corners} corners")
+        #print(f"{faces} faces")
+        print(f"Color: {color}\n")
 
         # Create mesh
-        mesh += "\n\nmesh2 {ob:c}".format(ob=123)
+        mesh += f"\n\nmesh2 {{"
 
         # Add VERTEX vectors
         mesh += "\n\t// Vertex vectors"
@@ -146,8 +138,8 @@ def create_mesh2(field, cutoffs, colormap="viridis", transmit=0.4,
         mesh += face_params
 
         # NORMAL indices
-        # // Not required because vertices and normals have the same indices
-        # // POV-Ray will use the values from faces_indices
+        # Not required because vertices & normals have the same indices
+        # POV-Ray will use the values from faces_indices
 
         mesh += (f"\n\tpigment {{ rgbt <"
                 + f"{color[0]:.4f}, {color[1]:.4f}, {color[2]:.4f}, "
@@ -157,7 +149,7 @@ def create_mesh2(field, cutoffs, colormap="viridis", transmit=0.4,
 
     # End union
     if len(cutoffs) > 1:
-        mesh += f"\n}}"
+        mesh += f"\n}}\n\n"
 
     return mesh
 
@@ -189,41 +181,77 @@ def write_mesh2_params(parameter, values, values_per_line=2):
             param_string += ", "
     param_string += f"\n\t\t}}"
 
-    return(param_string)
+    return param_string
 
 
-def slice_isosurface(mesh, corner1, corner2, subtract_box=False):
-    """Slice the isosurface with a user-specified rectangular box. 
+def slice_isosurface(mesh, n, cut_at=[[0.5, 1], [0.5, 1], [0, 1]],
+        subtract_box=False):
+    """Slice the isosurface with a user-specified prism. 
     
+    By default, it will remove the quadrant nearest the camera if used
+    with the default camera guesser. The section to remove in specified
+    as fractions of the unit cell.
+
     The boolean subtract_box switches between POV-Ray's intersect and
     difference functions, allowing you to preserve or extract a chunk.
 
     Args:
-      mesh: The mesh2 isosurface string
-      corner1: A corner of the box for intersect/difference
-      corner2: The corner of the box opposite corner1
-      subtract_box: Switch between POV-Ray's intersect (if False) and
-          difference (if True) functions; intersect preserves anything
-          within the box limits, difference removes anythin within the
-          box limits (Default value = False)
+      mesh (str): The mesh2 isosurface string
+      n (list): Dimensions of the numpy field array as [nx, ny, nz],
+          used as the isosurface dimensions
+      cut_at (list): Specify the section to remove, as a fraction of
+          the unit cell. (Default value = [[0.5, 1], [0.5, 1], [0, 1]])
+      subtract_box (bool, optional): Switch between POV-Ray's intersect
+          (if False) and difference (if True) functions; intersect
+          preserves anything within the box limits, difference removes
+          anythin within the box limits (Default value = False)
 
     Returns:
-      string: The modified mesh string
+      str: The modified mesh string
 
     """
-    # Create the rectangle
-    rect_string = (f"\nbox {{\n\t"
-            + f"<{corner1[0]}, {corner1[1]}, {corner1[2]}>"
-            + f"<{corner2[0]}, {corner2[1]}, {corner2[2]}>")
+    # cut_at is used to set the limits
+    for i in range(3):
+        # Always have in the order [min,max]
+        if cut_at[i][0] > cut_at[i][1]:
+            cut_at[i][0], cut_at[i][1] = cut_at[i][1], cut_at[i][0]
+
+        # Avoid artifacts by slightly overshooting limits
+        for j in range(2):
+            if cut_at[i][j] == 0:
+                cut_at[i][j] -= 0.001
+            if cut_at[i][j] == 1:
+                cut_at[i][j] += 0.001
+        cut_at[i][0] *= n[i]
+        cut_at[i][1] *= n[i]
+
+    # Adding points to the prism; it gets closed later.
+    # Set up to avoiding rotating or translating, so the coordinates
+    # work out a little funny because POV-Ray is left-handed.
+    # These values are "y" and "z".
+    points = [
+            [cut_at[1][0], cut_at[2][0]],
+            [cut_at[1][1], cut_at[2][0]],
+            [cut_at[1][1], cut_at[2][1]],
+            [cut_at[1][0], cut_at[2][1]]
+            ]
+
+    # Create the prism
+    slice_string = (f"\nprism {{ \n\tlinear_sweep\n\tlinear_spline"
+            + f"\n\t{cut_at[0][0]}, {cut_at[0][1]}, {len(points)+1}")
+
+    for i in range(len(points)):
+        slice_string += f"\n\t<{points[i][0]:.6f}, {points[i][1]:.6f}>, "
+    slice_string += f"\n\t<{points[0][0]:.6f}, {points[0][1]:.6f}>"
 
     # intersection + inverse is the same as difference
     if subtract_box == True:
-        rect_string += " inverse"
+        slice_string += "\n\tinverse"
 
-    rect_string += f"\n\t}}"
+    slice_string += f"\n\t}}"
 
     # Create the intersection
-    mesh = f"intersection {{" + mesh +  rect_string + f"\n}}\n\n\t"
+    mesh = f"intersection {{" + mesh +  slice_string + f"\n}}\n\n\t"
 
     return mesh
 
@@ -251,10 +279,10 @@ def process_field_array(field_array, center=True):
         raise RuntimeError("field_array must be 5D")
 
     # we need to reverse the direction to ensure that renderers put the
-    # "top" of the simulation at the "top" of the visualization
+    # "top" of the simulation at the "top" of the visualization.
     field_array = field_array[::-1, :, :, :, :]
 
-    # swap the z, x axes so that we end up with [x, y, z, ...] and
+    # Swap the z, x axes so that we end up with [x, y, z, ...] and
     # extract the dimensionality
     field_array = field_array.swapaxes(0, 2)
     nx, ny, nz, _, _ = field_array.shape

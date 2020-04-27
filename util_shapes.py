@@ -1444,9 +1444,8 @@ def create_device(device_dict,
 def isosurface_unit_cell(mesh, 
         device_dict, 
         n, 
+        cut_at=[[0.5, 1], [0.5, 1], [0, 1]],
         use_slice_UC=True, 
-        corner1=[0,0,0], 
-        corner2=[0,0,0], 
         subtract_box=True):
     """Generate a device string for use with isosurfaces.
     
@@ -1470,21 +1469,18 @@ def isosurface_unit_cell(mesh,
     * the isosurface dimensions
 
     Args:
-      mesh(str): the mesh object describing the isosurface
-      device_dict(dict: dict): Dictionary entry from a json file
-      n(list): Dimensions of the numpy field array as [nx, ny, nz],
+      mesh (str): the mesh object describing the isosurface
+      device_dict (dict): Dictionary entry from a json file
+      n (list): Dimensions of the numpy field array as [nx, ny, nz],
           used as the isosurface dimensions
+      cut_at (list): Specify the section to remove, as a fraction of
+          the unit cell, defaults to removing the quadrant nearest the
+          camera if used with the automatic camera guess function
       use_slice_UC(bool, optional): Gives you the option to take a
           slice out of the unit cell to help visualize the field
           (default True)
-      corner1(list, optional): A corner of the slice you wish to 
-          remove/keep, used with corner2 to define a box for an
-          intersection or difference object (Default value = [0)
-      corner2(list, optional): The corner diagonally opposite corner1 
-          (Default value = [0)
       subtract_box(bool, optional): Controls whether POV-Ray uses a
           difference object (True, default) or an intersection (False)
-      use_slice_UC:  (Default value = True)
 
     Returns:
       str: Unit cell string specifically for use with isosurfaces
@@ -1564,7 +1560,9 @@ def isosurface_unit_cell(mesh,
 
     # Can also subtract out pieces of the unit cell, 
     if use_slice_UC == True:
-        device = slice_isosurface(device, corner1, corner2, 
+#        device = slice_isosurface(device, corner1, corner2, 
+#                                  subtract_box = subtract_box)
+        device = slice_isosurface(device, n, cut_at=cut_at, 
                                   subtract_box = subtract_box)
 
     # Add substrate

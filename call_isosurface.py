@@ -30,9 +30,6 @@ field_array, nx, ny, nz = process_field_array(field_array, center=True)
 e_field, ex, ey, ez = extract_e_field(field_array)
 e_mag = calc_field_mag(e_field)
 
-print(nx, ny, nz)
-
-
 ########################
 # Isosurface variables #
 ########################
@@ -57,18 +54,16 @@ cmap_limits = [min(cutoffs), max(cutoffs)]
 # Box bounds are the origin and (nx, ny, nz)
 # Uses the intersection function if True
 use_slice = False
-# POV-Ray's intersect function behaves like 
-# the difference function if True.
+# If True, the intersect function behaves like the difference function
 subtract_box = True
-# Two opposite corners of the box 
-corner1 = [(0.5 * nx), (0.5 * ny), 0]
-corner2 = [nx, ny, nz]
+# Fraction of unit cell to use for intersection/difference
+# Entries are x(min,max), y(min,max), z(min,max)
+cut_at=[[0.5, 1], [0.5, 1], [0, 1]]
 
 # UNIT CELL
 add_unit_cell = True
 json_file = "DeviceFiles/Silos/device.index.json.gz"
 device_id = "08dd6608e15a264449c78353509083d2"  # Optica Fig 3c
-#UC_transmit = 0.0  ## Removed
 use_slice_UC = True
 subtract_box_UC = True
 substrate_thickness = 25
@@ -97,8 +92,8 @@ mesh = create_mesh2(
 
 # Use a box to slice the isosurface; modifies the mesh string 
 if use_slice == True:
-    mesh = slice_isosurface(mesh, corner1, corner2, 
-            subtract_box = subtract_box)
+    mesh = slice_isosurface(mesh, n, cut_at=cut_at,
+        subtract_box=substract_box)
 
 # Add unit cell
 if add_unit_cell == True:
@@ -109,9 +104,8 @@ if add_unit_cell == True:
             mesh, 
             device_dict, 
             n = [nx, ny, nz], 
+            cut_at = cut_at,
             use_slice_UC = use_slice_UC, 
-            corner1 = corner1, 
-            corner2 = corner2, 
             subtract_box = True)
 
 # Generate header and camera info
