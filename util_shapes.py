@@ -1560,8 +1560,6 @@ def isosurface_unit_cell(mesh,
 
     # Can also subtract out pieces of the unit cell, 
     if use_slice_UC == True:
-#        device = slice_isosurface(device, corner1, corner2, 
-#                                  subtract_box = subtract_box)
         device = slice_isosurface(device, n, cut_at=cut_at, 
                                   subtract_box = subtract_box)
 
@@ -1792,7 +1790,6 @@ def set_color_and_finish(dev_string, finish_dict = None,
     assert isinstance(use_finish, str),"Error: finish type must be a string"
 
     # Create the finish dictionary if it doesn't already exist.
-    #
     # The finish_dict does not include custom finishes or coatings if
     # created here. This is more of an emergency backup plan than
     # anything. I may eventually make it raise an exception instead.
@@ -1801,17 +1798,16 @@ def set_color_and_finish(dev_string, finish_dict = None,
 
     # Make sure that the selected finish is in finish_dict
     if use_finish not in finish_dict:
+        print("WARNING: Requested key '{use_finish}'not in the dictionary!")
+        print("         Changing the finish key to 'dull' and proceeding!")
         use_finish = "dull"
 
-    # Make sure that color is in rgbft format (5 entries).
-    # Code will set color to the Windows95 background color as 
-    # punishment if the color list has too many values.
-    # I should probably change it to raise an exception, but eh.
+    # Make sure that color is in rgbft format (5 entries). Lists that
+    # are too short (<3) or too long (>5) should have been caught by
+    # the exception above.
     if len(color) < 5:
         while len(color) != 5:
             color.append(0)
-    elif len(color) > 5:
-        color = [0, 0.6667, 0.667, 0, 0]
 
     # The filter and transmit values matter for the "SiO2", "glass",
     # "translucent", and "irid" finishes, and this function will
@@ -1828,7 +1824,7 @@ def set_color_and_finish(dev_string, finish_dict = None,
             color[3] = 0.98
         elif use_finish == "translucent":
             color[4] = 0.02
-            color[3] = 0.50
+            color[3] = 0.667
         elif use_finish == "glass":
             color[3] = 0.95
         elif use_finish == "irid":

@@ -26,10 +26,12 @@ import numpy as np
 
 def create_mesh2(field, cutoffs, colormap="viridis", transmit=0.4, 
         cmap_limits=["a","b"]):
-    """Converts any input field to one or more isosurfaces using the
-    marching cubes algorithm. Puts output into the povray mesh2
-    format and tracks the maximum dimensions of the isosurfaces.
-    Outputs the mesh2 string and the overall dimensions.
+    """Convert any input field to one or more isosurfaces.
+    
+    Uses the scikit-image marching cubes algorithm to generate the
+    isosurface description. Formats output into POV-Ray's mesh2 format
+    and tracks the maximum dimensions of the isosurfaces.  Outputs the
+    mesh2 string and the overall dimensions.
     
     Minimum required input is
     * the field of interest (field)
@@ -155,8 +157,7 @@ def create_mesh2(field, cutoffs, colormap="viridis", transmit=0.4,
 
 
 def write_mesh2_params(parameter, values, values_per_line=2):
-    """Takes parameter data and converts it into a string that POV-Ray
-    understands.
+    """Convert isosurface parameters to the POV-Ray mesh2 format.
 
     Args:
       parameter (string): One of the mesh2 specifications, e.g. 
@@ -176,7 +177,8 @@ def write_mesh2_params(parameter, values, values_per_line=2):
     for j in range(len(values)):
         if j % 2 == 0:
             param_string += "\n\t\t"
-        param_string += f"<{values[j][0]:.5f}, {values[j][1]:.5f}, {values[j][2]:.5f}>"
+        param_string += f"<{values[j][0]:.5f}, {values[j][1]:.5f}, "
+        param_string += f"{values[j][2]:.5f}>"
         if j != (len(values) - 1):
             param_string += ", "
     param_string += f"\n\t\t}}"
@@ -215,6 +217,9 @@ def slice_isosurface(mesh, n, cut_at=[[0.5, 1], [0.5, 1], [0, 1]],
         # Always have in the order [min,max]
         if cut_at[i][0] > cut_at[i][1]:
             cut_at[i][0], cut_at[i][1] = cut_at[i][1], cut_at[i][0]
+
+        assert min(cut_at[i]) >= 0,"Error: min(cut_at[i]) must be >= 0"
+        assert max(cut_at[i]) <= 1,"Error: max(cut_at[i]) must be <= 1"
 
         # Avoid artifacts by slightly overshooting limits
         for j in range(2):

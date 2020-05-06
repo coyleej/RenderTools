@@ -342,7 +342,7 @@ def render_pov(pov_name, image_name, height, width,
     print("http://wiki.povray.org/content/Reference:File_Output_Options")
     print("http://wiki.povray.org/content/Reference:Tracing_Options")
 
-    print(f"write_POV: Render with: \n{div}\n{command}\n{div}")
+    print(f"Render with: \n{div}\n{command}\n{div}")
 
     return
 
