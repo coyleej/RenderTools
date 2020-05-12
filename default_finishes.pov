@@ -29,10 +29,16 @@ light_source
     color rgb <1, 1, 1>
     }
 
-background { rgb <1, 1, 1> }
-
 #declare Spacing = 5;
 #declare Radius = 2;
+
+//background { rgb <1, 1, 1> }
+// Checkered background
+plane 
+    {
+    x, -0.5001 * Radius 
+    texture { pigment { checker color rgb <0,0,0> color rgb <1,1,1> } }
+    }
 
 // dull
 sphere
