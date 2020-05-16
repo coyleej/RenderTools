@@ -108,7 +108,8 @@ def write_header_and_camera(device_dims, coating_dims=[0, 0, 0],
         camera_style="perspective", camera_rotate=60, camera_options="", 
         ortho_angle = 60, camera_loc=[], look_at=[], light_loc=[], 
         up_dir=[0, 0, 1], right_dir=[0, 1, 0], sky=[0, 0, 1.33], 
-        bg_color=[], shadowless=False, isosurface=False):
+        bg_color=[], shadowless=False, isosurface=False, 
+        use_include_files=False):
     """Create a string containing the header and camera information.
     
     The minimum required input is:
@@ -168,6 +169,10 @@ def write_header_and_camera(device_dims, coating_dims=[0, 0, 0],
           could include the ortho angle for orthographic renderings 
           renderings, or options for other camera styles if necessary
           (Default value = "")
+      use_include_files (bool, optional): Adds #include declarations
+          for colors.inc, finish.inc, glass.inc, and metals.inc if set
+          to True. Only required if you're using a pre-built color, 
+          finish, etc. (default False)
 
     Returns:
       string: Header information with camera, light, and background 
@@ -203,6 +208,10 @@ def write_header_and_camera(device_dims, coating_dims=[0, 0, 0],
     header = "#version 3.7;\n"
     header += f"global_settings {{ assumed_gamma 1.0 }}\n\n"
     
+    if use_include_files == True:
+        header += '#include "colors.inc"\n#include "finish.inc"\n'
+        header += '#include "glass.inc"\n#include "metals.inc"\n\n'
+
     if bg_color != []:
         header += ("background {{ "
                 + f"color rgb <{bg_color[0]}, {bg_color[1]}, {bg_color[2]}> "
@@ -250,20 +259,22 @@ def write_pov_file(pov_name, pov_string):
     return
 
 
-def render_pov(pov_name, image_name, height, width,
+def render_pov(pov_name, image_name, height=800, width=800,
         display=False, transparent=True, antialias=True,
-        num_threads=0, open_png=True, render=True, 
+        num_threads=0, open_image=True, render=True, 
         render_quality=9):
     """Generate the render command and feed the pov file into POV-Ray.
     
-    By default it will render an image open the image post-render with
+    By default it will render an image, open the image post-render with
     eog, and print the render command to the terminal.
     
+    The output file format is determined from the file extension given
+    in image_name. If the specified format is not supported by POV-Ray,
+    or the file format was omitted, the code specifies the png format.
+
     The minimum required input is:
     * the name for the generated .pov file (pov_name)
     * the name for the image that will be rendered (image_name)
-    * image height
-    * image width
     
     The code will always include (in STDOUT) the command to render
     the image with the selected render options, even if it is only
@@ -272,8 +283,8 @@ def render_pov(pov_name, image_name, height, width,
     Args:
       pov_name (str): Name of the .pov file
       image_name (str): Name of the rendered image
-      height (int): Image height (default 800)
-      width (int): Image width (default 800)
+      height (int, optional): Image height (default 800)
+      width (int, optional): Image width (default 800)
       display (bool, optional): Display render progress on the screen, 
           only relevant if ``render=True`` (default False)
       transparent (bool, optional): Sets background transparency 
@@ -282,7 +293,7 @@ def render_pov(pov_name, image_name, height, width,
       num_threads (int, optional): Tells POV-Ray how many threads to
           use when rendering, specifying 0 will use all available 
           (default 0)
-      open_png (bool, optional): Opens rendered image with eog if the
+      open_image (bool, optional): Opens rendered image with eog if the
           rendering is successful (default False)
       render (bool, optional): Tells POV-Ray to render the image 
           (default True)
@@ -295,15 +306,43 @@ def render_pov(pov_name, image_name, height, width,
 
     """
     from os import system
+    import re
+
+    # Determine the file type
+    file_type_dict = {
+            ".png$":"N", 
+            ".bmp$":"B", 
+            ".rle":"C",
+            ".exr":"E",
+            ".hdr$":"H",
+            ".jp[e]*g":"J", 
+            ".ppm$":"P",
+            ".tga":"T"
+            }
+    file_type_list = list(file_type_dict)
+    found = False
+    i = 0
+    while found == False:
+        pattern = re.compile(file_type_list[i])
+        if pattern.search(image_name):
+            use_type = file_type_dict[file_type_list[i]]
+            found = True
+        else:
+            i += 1
+            if i == len(file_type_dict):
+                print("Warning: Image file format not supported! Using .png!")
+                image_name += ".png"
+                use_type = "N"
+                found = True
 
     command = (f"povray Input_File_Name={pov_name} "
             + f"Output_File_Name={image_name} "
             + f"+H{height} +W{width}")
 
     if display:
-        command += " Display=on"
+        command += " +D"
     else:
-        command += " Display=off"
+        command += " -D"
 
     if transparent:
         command += " +ua"
@@ -313,6 +352,9 @@ def render_pov(pov_name, image_name, height, width,
 
     if num_threads != 0:
         command += f" +WT{num_threads}"
+
+    if use_type != "N":
+        command += f" +F{use_type}"
 
     if render_quality != 9:
         if render_quality not in range(0,12):
@@ -329,7 +371,7 @@ def render_pov(pov_name, image_name, height, width,
         # 9, 10, 11 Compute media and radiosity
         # The default is 9 if not specified. Quick colors used at 5 or below.
 
-    if open_png == True:
+    if open_image:
         command += " && eog {0}".format(image_name)
 
     if render == True:
