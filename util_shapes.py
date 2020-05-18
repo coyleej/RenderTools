@@ -102,10 +102,10 @@ def create_rectangle(center, end, halfwidths, angle=0, for_silo=False):
 
     """
     rect_string = (f"box\n\t\t{{\n\t\t"
-            + "<{(center[0] - halfwidths[0])}, "
-            + "{(center[1]-halfwidths[1])}, {end[0]:.5f}>\n\t\t"
-            + "<{(center[0] + halfwidths[0])} "
-            + "{(center[1]+halfwidths[1])}, {end[1]:.5f}>\n\t\t")
+            + f"<{(center[0] - halfwidths[0])}, "
+            + f"{(center[1]-halfwidths[1])}, {end[0]:.5f}>\n\t\t"
+            + f"<{(center[0] + halfwidths[0])} "
+            + f"{(center[1]+halfwidths[1])}, {end[1]:.5f}>\n\t\t")
 
     if angle != 0:      # in degrees
         rect_string += f"rotate <0, 0, {angle}> \n\t\t"
@@ -288,10 +288,10 @@ def create_torus(major_radius, minor_radius, center, z_top, angle=0,
     if ratio == 0.0:
         if smaller_dim == major_radius[0]:
             ratio = major_radius[1] / major_radius[0]
-            torus += "scale <1, {ratio}, 1>\n\t\t\t"
+            torus += f"scale <1, {ratio}, 1>\n\t\t\t"
         else:
             ratio = major_radius[0] / major_radius[1]
-            torus += "scale <{ratio}, 1, 1>\n\t\t\t"
+            torus += f"scale <{ratio}, 1, 1>\n\t\t\t"
 
     if angle != 0:      # in degrees
         torus += f"rotate <0, 0, {angle}> \n\t\t"
@@ -1740,6 +1740,9 @@ def create_finish_dict(custom_finish=[], coating_ior_dict=None):
     # Add custom finishes
     if custom_finish != []:
         for i in range(len(custom_finish)):
+            key = custom_finish[i][0]
+            assert key.find(" ") != -1,\
+                    "Error: you cannot have spaces in finish names"
             finish_keys.append(custom_finish[i][0])
             finish_strings.append(custom_finish[i][1])
 
@@ -1782,60 +1785,85 @@ def set_color_and_finish(dev_string, finish_dict = None,
       string: Updated device string containing color and finish settings
 
     """
-    color = feature_color_finish[0]
-    assert isinstance(color, list),"Error: feature color is not a list"
-    assert len(color) in range(3,6),"Error: color list is too short/long"
+    import os
 
+    # Extract color
+    color = feature_color_finish[0]
+    assert isinstance(color, str) or isinstance(color, list),\
+            "Error: wrong type for color, must be string or list"
+    if isinstance(color, str):
+        print("Using color from the POV-Ray include files.")
+        use_colors_inc = True
+    else:
+        use_colors_inc = False
+
+    # Extract finish
     use_finish = feature_color_finish[1]
     assert isinstance(use_finish, str),"Error: finish type must be a string"
+    if use_finish.find(" ") == -1:
+        use_finish_inc = False
+    else:
+        print("Using finish from the POV-Ray include files.")
+        use_finish_inc = True
 
     # Create the finish dictionary if it doesn't already exist.
-    # The finish_dict does not include custom finishes or coatings if
-    # created here. This is more of an emergency backup plan than
-    # anything. I may eventually make it raise an exception instead.
+    # The finish_dict does not include custom finishes or coatings
+    # if created here. This is more of an emergency backup plan
+    # than anything. I may eventually make it raise an exception
+    # instead.
     if finish_dict == None:
         finish_dict = create_finish_dict()
 
     # Make sure that the selected finish is in finish_dict
-    if use_finish not in finish_dict:
-        print("WARNING: Requested key '{use_finish}'not in the dictionary!")
-        print("         Changing the finish key to 'dull' and proceeding!")
+    if use_finish not in finish_dict and use_finish_inc == False:
+        print("WARNING: Key '{use_finish}'not in the dictionary!")
+        print("         Changing finish key to 'dull' and proceeding!")
         use_finish = "dull"
 
-    # Make sure that color is in rgbft format (5 entries). Lists that
-    # are too short (<3) or too long (>5) should have been caught by
-    # the exception above.
-    if len(color) < 5:
-        while len(color) != 5:
-            color.append(0)
+    # Use a color from the include files
+    if use_colors_inc:
+        dev_string += (f"pigment {{ {color} }}\n\t\t")
+    # Use a color NOT from the include files
+    else:
+        # Make sure that color is in rgbft format (5 entries). Lists
+        # that are too short (<3) or too long (>5) should have been
+        # caught by the exception above.
+        if len(color) < 5:
+            while len(color) != 5:
+                color.append(0)
 
-    # The filter and transmit values matter for the "SiO2", "glass",
-    # "translucent", and "irid" finishes, and this function will
-    # override anything specified by the user!
-    #
-    # All other finishes (including coatings): filter and transmit are
-    # set to 0 by default, but the user may specify other values. The
-    # code will never override these values for these finishes.
-    #
-    # color[3] is filter, color[4] is transmit
-    if use_finish in ["SiO2", "translucent", "glass", "irid"]: 
-        print("\nWARNING: Overriding the transmit and/or filter values!!")
-        if use_finish == "SiO2":
-            color[3] = 0.98
-        elif use_finish == "translucent":
-            color[4] = 0.02
-            color[3] = 0.667
-        elif use_finish == "glass":
-            color[3] = 0.95
-        elif use_finish == "irid":
-            color[3] = 0.7
+        # The filter and transmit values matter for the "SiO2", "glass",
+        # "translucent", and "irid" finishes, and this function will
+        # override anything specified by the user!
+        #
+        # All other finishes (including coatings!): filter and transmit
+        # are set to 0 by default, but the user may specify other
+        # values. The code will never override these values for these
+        # finishes.
+        #
+        # color[3] is filter, color[4] is transmit
+        if use_finish in ["SiO2", "translucent", "glass", "irid"]: 
+            print("\nWARNING: Overriding the transmit and/or filter values!!")
+            if use_finish == "SiO2":
+                color[3] = 0.98
+            elif use_finish == "translucent":
+                color[4] = 0.02
+                color[3] = 0.667
+            elif use_finish == "glass":
+                color[3] = 0.95
+            elif use_finish == "irid":
+                color[3] = 0.7
 
-    dev_string += (f"pigment {{ color rgbft "
-            + f"<{color[0]}, {color[1]}, {color[2]}, {color[3]}, {color[4]}>"
-            + f" }}\n\t\t")
+        dev_string += (f"pigment {{ color rgbft "
+                + f"<{color[0]}, {color[1]}, {color[2]}, {color[3]}, {color[4]}>"
+                + f" }}\n\t\t")
 
-    # Add finish
-    dev_string += finish_dict[use_finish]
+    # Add finish from include files
+    if use_finish_inc:
+        dev_string += (f"finish {{ {use_finish} }}\n\t\t")
+    # Add finish NOT from include
+    else:
+        dev_string += finish_dict[use_finish]
 
     # Close object
     dev_string += f"}}\n\n\t"

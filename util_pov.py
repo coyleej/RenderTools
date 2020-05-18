@@ -65,10 +65,10 @@ def guess_camera(device_dims, coating_dims=[0,0,0],
     camera_offset = x_offset * (max(device_dims) + 0.8 * max(coating_dims))
     light_offset = camera_offset * 1.25 
 
-    # Need to scale z-axis settings differently when rendering isosurfaces
+    # Need to scale z-axis settings differently with isosurfaces
     # Related to default origin position:
     # - Pure device render: top at z = 0, centered at x=y=0 by default
-    # - Isosurface (and optional unit cell) has bottom at z=0, origin at corner
+    # - Isosurface (and opt. unit cell) bottom at z=0, origin at corner
     if isosurface == False:
         z_lookat = -0.66
     else:
@@ -179,10 +179,11 @@ def write_header_and_camera(device_dims, coating_dims=[0, 0, 0],
           settings
 
     """
-    # If camera and light source locations specified but the look_at point is
-    # missing, set look_at point and leave other values alone
-    # If either camera or light locations are missing, all values are filled
-    # in by the guess_camera function (called within write_header_and_camera)
+    # If camera and light source locations specified but the look_at 
+    # point is missing, set look_at point and leave other values alone.
+    # If either camera or light locations are missing, all values are
+    # filled in by the guess_camera function (called within 
+    # write_header_and_camera)
     if look_at == []:
         if camera_loc != [] and light_loc != []:
             # Assumes the device is centered at x=y=0
@@ -219,7 +220,8 @@ def write_header_and_camera(device_dims, coating_dims=[0, 0, 0],
 
     header += (f"camera \n\t{{\n\t"
             + f"{camera_style} {camera_options} \n\t"
-            + f"location <{camera_loc[0]}, {camera_loc[1]}, {camera_loc[2]}>\n\t"
+            + "location "
+            + f"<{camera_loc[0]}, {camera_loc[1]}, {camera_loc[2]}>\n\t"
             + f"look_at <{look_at[0]}, {look_at[1]}, {look_at[2]}>\n\t"
             + f"up <{up_dir[0]}, {up_dir[1]}, {up_dir[2]}>\n\t"
             + f"right <{right_dir[0]}, {right_dir[1]}, {right_dir[2]}>\n\t"
@@ -242,8 +244,10 @@ def write_pov_file(pov_name, pov_string):
 
     Must contain the header, camera information, and device description
     for the file to render successfully. This function does NOT check
-    that all information is included. The information is written to
-    the name specified in pov_name.
+    that the header and device/isosurface information is included, but
+    it does use grep and sed to make sure that the #include directives
+    are present if the user appears to be calling information from the
+    include files. Everything is written to the file pov_name.
 
     Args:
       pov_name (string): Name to give the .pov file
@@ -253,9 +257,40 @@ def write_pov_file(pov_name, pov_string):
     Returns:
 
     """
+    import os
+
     fileID = open(pov_name, "w")
     fileID.write(pov_string)
     fileID.close()
+
+    using_include_file = False
+
+    # Anything from the include files is "keyword { OneWord }"
+    finish_inc = f"grep 'finish {{[A-Za-z ][A-Za-z ]*}}' {pov_name}"
+    stream = os.popen(finish_inc)
+    if stream.read() != "":
+        using_include_file = True
+
+    pigment_inc = f"grep 'pigment {{[A-Za-z ][A-Za-z ]*}}' {pov_name}"
+    stream = os.popen(pigment_inc)
+    if stream.read() != "":
+        using_include_file = True
+
+    if using_include_file == True:
+        include = f"grep '^#include' {pov_name}"
+        stream = os.popen(include)
+        if stream.read() == "":
+            print("WARNING: You appear to be using values from include files")
+            print("         without importing the files with #include.")
+            print("         Fixing this for you...")
+
+            pov_name = "shiny_batman.pov"                                                  
+            sed_string = ("sed -i '/camera/ i\#include \"colors.inc\"\\\n"                 
+                       +  "#include \"finish.inc\"\\\n"                                    
+                       +  "#include \"glass.inc\"\\\n"                                     
+                       + f"#include \"metals.inc\"\\\n' {pov_name}")                       
+            print(sed_string)                                                              
+            os.system(sed_string) 
     return
 
 
@@ -279,6 +314,16 @@ def render_pov(pov_name, image_name, height=800, width=800,
     The code will always include (in STDOUT) the command to render
     the image with the selected render options, even if it is only
     creating a .pov file (not rendering).
+
+    POV-Ray image quality options:
+    0, 1      Just show quick colors. Full ambient lighting only. 
+    2, 3      Show specified diffuse and ambient light.
+    4         Render shadows, but no extended lights.
+    5         Render shadows, including extended lights.
+    6, 7      Compute texture patterns, compute photons
+    8         Compute reflected, refracted, and transmitted rays.
+    9, 10, 11 Compute media and radiosity
+    The default is 9. Quick colors used at 5 or below.
 
     Args:
       pov_name (str): Name of the .pov file
@@ -312,12 +357,12 @@ def render_pov(pov_name, image_name, height=800, width=800,
     file_type_dict = {
             ".png$":"N", 
             ".bmp$":"B", 
-            ".rle":"C",
-            ".exr":"E",
+            ".rle$":"C",
+            ".exr$":"E",
             ".hdr$":"H",
-            ".jp[e]*g":"J", 
+            ".jp[e]*g$":"J", 
             ".ppm$":"P",
-            ".tga":"T"
+            ".t[ar]*ga$":"T"
             }
     file_type_list = list(file_type_dict)
     found = False
@@ -361,16 +406,6 @@ def render_pov(pov_name, image_name, height=800, width=800,
             render_quality = 9
         command += f" +Q{render_quality}"
 
-        # POV-Ray image quality options:
-        # 0, 1      Just show quick colors. Use full ambient lighting only. 
-        # 2, 3      Show specified diffuse and ambient light.
-        # 4         Render shadows, but no extended lights.
-        # 5         Render shadows, including extended lights.
-        # 6, 7      Compute texture patterns, compute photons
-        # 8         Compute reflected, refracted, and transmitted rays.
-        # 9, 10, 11 Compute media and radiosity
-        # The default is 9 if not specified. Quick colors used at 5 or below.
-
     if open_image:
         command += " && eog {0}".format(image_name)
 
@@ -384,7 +419,7 @@ def render_pov(pov_name, image_name, height=800, width=800,
     print("http://wiki.povray.org/content/Reference:File_Output_Options")
     print("http://wiki.povray.org/content/Reference:Tracing_Options")
 
-    print(f"Render with: \n{div}\n{command}\n{div}")
+    print(f"Render with \n{div}\n{command}\n{div}")
 
     return
 
