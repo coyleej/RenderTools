@@ -1651,8 +1651,8 @@ def create_finish_dict(custom_finish=[], coating_ior_dict=None):
 
     # Translucent and coatings base string, no IOR
     finish_temp = (f"finish \n\t\t\t{{ \n\t\t\t"
-                + "emission 0.25 \n\t\t\t"
-                + "diffuse 0.75 \n\t\t\t"
+                + "emission 0.10 \n\t\t\t"
+                + "diffuse 0.85 \n\t\t\t"
                 + "specular 0.4 \n\t\t\t"
                 + "brilliance 4 \n\t\t\t"
                 + f"reflection {{ 0.5 fresnel on }}\n\t\t\t"
@@ -1677,8 +1677,8 @@ def create_finish_dict(custom_finish=[], coating_ior_dict=None):
 
     # Glass
     finish = (f"finish \n\t\t\t{{ \n\t\t\t"
-                + "specular 0.6 \n\t\t\t"
                 + "phong 0.8 \n\t\t\t"
+                + "phong_size 100 \n\t\t\t"
                 + "brilliance 5 \n\t\t\t"
                 + f"reflection {{ 0.2, 1.0 fresnel on }}\n\t\t\t"
                 + f"}}\n\t\t"
