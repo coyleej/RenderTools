@@ -107,9 +107,10 @@ def guess_camera(device_dims, coating_dims=[0,0,0],
 def write_header_and_camera(device_dims, coating_dims=[0, 0, 0], 
         camera_style="perspective", camera_rotate=60, camera_options="", 
         ortho_angle = 60, camera_loc=[], look_at=[], light_loc=[], 
-        up_dir=[0, 0, 1], right_dir=[0, 1, 0], sky=[0, 0, 1.33], 
+        up_dir=[0, 0, 1], right_dir=[0, -1, 0], sky=[0, 0, 1.33], 
         bg_color=[], shadowless=False, isosurface=False, 
-        use_include_files=False):
+        use_include_files=False, include_files=["colors.inc",
+        "finish.inc", "glass.inc", "metals.inc"]):
     """Create a string containing the header and camera information.
     
     The minimum required input is:
@@ -122,7 +123,7 @@ def write_header_and_camera(device_dims, coating_dims=[0, 0, 0],
     * if you have an isosurface, you must specify isosurface = True
     
     The following camera settings generate the same dimensions,
-    but the second one has more whitespace at top and bottom:
+    but the second one has more space at top and bottom:
     height=800, width=4/3*height, up_dir=[0,0,1], right_dir=[0,1,0],
             sky=up_dir
     height=800, width=height, up_dir=[0,0,1.333], right_dir=[0,1,0],
@@ -169,10 +170,18 @@ def write_header_and_camera(device_dims, coating_dims=[0, 0, 0],
           could include the ortho angle for orthographic renderings 
           renderings, or options for other camera styles if necessary
           (Default value = "")
-      use_include_files (bool, optional): Adds #include declarations
-          for colors.inc, finish.inc, glass.inc, and metals.inc if set
-          to True. Only required if you're using a pre-built color, 
-          finish, etc. (default False)
+      use_include_files (bool, optional): Adds #include declarations.
+          If set to True and the user does not specify anything in the
+          include_files argument, it defaults to adding colors.inc,
+          finish.inc, glass.inc, and metals.inc. If the user specifies
+          anything in the include_files variable, use_include_files is
+          automatically set to True and those include files will be 
+          added. (default False)
+      include_files (list, optional): The list of include files the
+          user wishes to add to the header. Specifying anything other
+          than the default will automatically set use_include_files
+          to True. (Default
+          ["colors.inc", "finish.inc", "glass.inc", "metals.inc"])
 
     Returns:
       string: Header information with camera, light, and background 
@@ -208,10 +217,15 @@ def write_header_and_camera(device_dims, coating_dims=[0, 0, 0],
     # Create POV header
     header = "#version 3.7;\n"
     header += f"global_settings {{ assumed_gamma 1.0 }}\n\n"
-    
+
+    if include_files != [
+            "colors.inc", "finish.inc", "glass.inc", "metals.inc"]:
+        use_include_files = True
+
     if use_include_files == True:
-        header += '#include "colors.inc"\n#include "finish.inc"\n'
-        header += '#include "glass.inc"\n#include "metals.inc"\n\n'
+        for i in range(len(include_files)):
+            header += f'#include "{include_files[i]}"\n'
+        header += "\n"
 
     if bg_color != []:
         header += ("background {{ "
