@@ -394,45 +394,52 @@ def render_pov(pov_name, image_name, height=800, width=800,
                 use_type = "N"
                 found = True
 
-    command = (f"povray Input_File_Name={pov_name} "
-            + f"Output_File_Name={image_name} "
-            + f"+H{height} +W{width}")
+    # Create .ini file with render settings
+    ini_string = ("; POV-Ray version 3.7 INI file\n"
+               + f"; MANTIS auto-generated INI for {pov_name}\n\n"
+               + f"+I{pov_name}\n+O{image_name}\n"
+               + f"+H{height}\n+W{width}\n")
 
     if display:
-        command += " +D"
+        ini_string += "+D\n"
     else:
-        command += " -D"
+        ini_string += "-D\n"
 
     if transparent:
-        command += " +ua"
+        ini_string += "+UA\n"
 
     if antialias:
-        command += " +A"
+        ini_string += "+A\n"
 
     if num_threads != 0:
-        command += f" +WT{num_threads}"
+        ini_string += f"+WT{num_threads}\n"
 
     if use_type != "N":
-        command += f" +F{use_type}"
+        ini_string += f"+F{use_type}\n"
 
     if render_quality != 9:
         if render_quality not in range(0,12):
             render_quality = 9
-        command += f" +Q{render_quality}"
+        ini_string += f"+Q{render_quality}\n"
 
+    ini_name = pov_name.replace(".pov",".ini")
+    fileID = open(ini_name, "w")
+    fileID.write(ini_string)
+    fileID.close()
+
+    # Create render command
+#    command = f"povray {ini_name.replace('.ini','')}"
+    command = f"povray {ini_name}"
     if open_image:
         command += " && eog {0}".format(image_name)
-
     if render == True:
         system(command)
 
     div = '----------------------------------------------------'
-
     print("For additional rendering options, see POV-Ray's documentation,")
     print("particularly the file output and tracing options:")
     print("http://wiki.povray.org/content/Reference:File_Output_Options")
     print("http://wiki.povray.org/content/Reference:Tracing_Options")
-
     print(f"Render with \n{div}\n{command}\n{div}")
 
     return
