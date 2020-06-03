@@ -617,7 +617,12 @@ def write_circle_feature(shapes, k, device_dims, end,
     """
     from util import deep_access
 
-    center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
+    mid = deep_access(shapes, [str(k), 'shape_vars', 'center'])
+    if isinstance(mid, dict):
+        center = [mid.get("x"), mid.get("y")]
+    else:
+        center = mid
+
     radius = deep_access(shapes, [str(k), 'shape_vars', 'radius'])
 
     circle = "// Circular pillar\n\t" \
@@ -667,9 +672,18 @@ def write_ellipse_feature(shapes, k, device_dims, end,
     """
     from util import deep_access
 
-    center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
+    mid = deep_access(shapes, [str(k), 'shape_vars', 'center'])
+    if isinstance(mid, dict):
+        center = [mid.get("x"), mid.get("y")]
+    else:
+        center = mid
+
     hw = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
-    halfwidths = [hw.get("x"), hw.get("y")]
+    if isinstance(hw, dict):
+        halfwidths = [hw.get("x"), hw.get("y")]
+    else:
+        halfwidths = hw
+
     angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
 
     ellipse = "// Ellipse\n\t" \
@@ -722,9 +736,18 @@ def write_rectangle_feature(shapes, k, device_dims, end,
     """
     from util import deep_access
 
-    center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
+    mid = deep_access(shapes, [str(k), 'shape_vars', 'center'])
+    if isinstance(mid, dict):
+        center = [mid.get("x"), mid.get("y")]
+    else:
+        center = mid
+
     hw = deep_access(shapes, [str(k), 'shape_vars', 'halfwidths'])
-    halfwidths = [hw.get("x"), hw.get("y")]
+    if isinstance(hw, dict):
+        halfwidths = [hw.get("x"), hw.get("y")]
+    else:
+        halfwidths = hw
+
     angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
 
     rectangle = ("// Rectangle\n\t"
@@ -779,7 +802,12 @@ def write_polygon_feature(shapes, k, device_dims, end,
     """
     from util import deep_access
 
-    center = deep_access(shapes, [str(k), 'shape_vars', 'center'])
+    mid = deep_access(shapes, [str(k), 'shape_vars', 'center'])
+    if isinstance(mid, dict):
+        center = [mid.get("x"), mid.get("y")]
+    else:
+        center = mid
+
     angle = deep_access(shapes, [str(k), 'shape_vars', 'angle'])
     points = deep_access(shapes, [str(k), 'shape_vars', 'vertices'])
 
