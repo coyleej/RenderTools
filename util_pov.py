@@ -105,8 +105,8 @@ def guess_camera(device_dims, coating_dims=[0,0,0],
 
 
 def write_header_and_camera(device_dims, coating_dims=[0, 0, 0], 
-        camera_style="perspective", camera_rotate=60, camera_options="", 
-        ortho_angle = 60, camera_loc=[], look_at=[], light_loc=[], 
+        camera_style="perspective", camera_rotate=60,
+        viewing_angle = 0, camera_loc=[], look_at=[], light_loc=[], 
         up_dir=[0, 0, 1], right_dir=[0, -1, 0], sky=[0, 0, 1.33], 
         bg_color=[], shadowless=False, isosurface=False, 
         use_include_files=False, include_files=["colors.inc",
@@ -141,8 +141,11 @@ def write_header_and_camera(device_dims, coating_dims=[0, 0, 0],
           there is no promise that they will work as expected
       camera_rotate (float, optional): Rotates the camera location 
           about the z-axis (degrees, default 60)
-      ortho_angle (int, optional): Width of the field of view for the 
-          orthographic camera (degrees, default 30)
+      viewing_angle (int, optional): Width of the field of view of the 
+          camera; the orthographic camera will reset this to 60 if the
+          user doesn't specify anything, while any other camera 
+          (including the default perspective camera) omits the angle
+          keyword if it is set to 0 (degrees, default 0)
       camera_loc (list, optional): Location of the camera, can be 
           guessed with ``guess_camera`` (default empty)
       look_at (list, optional): The point that the camera looks at 
@@ -165,11 +168,6 @@ def write_header_and_camera(device_dims, coating_dims=[0, 0, 0],
       isosurface (bool, optional): Set this to True when rendering iso-
           surfaces to account for the differing origins between S4 RCWA
           simulations and isosurface creation (default False)
-      camera_options (string, optional): Included in the function call
-          but yet fully integrated into the rest of the script. It 
-          could include the ortho angle for orthographic renderings 
-          renderings, or options for other camera styles if necessary
-          (Default value = "")
       use_include_files (bool, optional): Adds #include declarations.
           If set to True and the user does not specify anything in the
           include_files argument, it defaults to adding colors.inc,
@@ -209,10 +207,14 @@ def write_header_and_camera(device_dims, coating_dims=[0, 0, 0],
     if camera_style == "":
         camera_style = "perspective"
 
+    camera_options = ""
     if camera_style == "orthographic":
-        camera_options = f"angle {ortho_angle}"
+        if viewing_angle == 0:
+            viewing_angle = 60
+        camera_options += f"angle {viewing_angle}\n\t"
     else:
-        camera_options = ""
+        if viewing_angle != 0:
+            camera_options += f"angle {viewing_angle}\n\t"
 
     # Create POV header
     header = "#version 3.7;\n"
@@ -233,7 +235,7 @@ def write_header_and_camera(device_dims, coating_dims=[0, 0, 0],
                 + "}}\n\n")
 
     header += (f"camera \n\t{{\n\t"
-            + f"{camera_style} {camera_options} \n\t"
+            + f"{camera_style} \n\t{camera_options}"
             + "location "
             + f"<{camera_loc[0]}, {camera_loc[1]}, {camera_loc[2]}>\n\t"
             + f"look_at <{look_at[0]}, {look_at[1]}, {look_at[2]}>\n\t"
