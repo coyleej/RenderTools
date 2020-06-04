@@ -70,15 +70,18 @@ def create_ellipse(center, end, halfwidths, angle=0, for_silo=False):
       string: POV-Ray code describing the elliptical cylinder
 
     """
-    # Added radius=1 because it was omitted for some reason
+    # Start with radius=1, then scale to shape 
     ellipse_string = (f"cylinder \n\t\t{{\n\t\t "
-            + f"<{center[0]}, {center[1]}, {end[0]:.5f}>, \n\t\t"
-            + f"<{center[0]}, {center[1]}, {end[1]:.5f}>, \n\t\t"
+            + f"<0, 0, {end[0]:.5f}>, \n\t\t"
+            + f"<0, 0, {end[1]:.5f}>, \n\t\t"
             + f"1\n\t\t"
             + f"scale <{halfwidths[0]}, {halfwidths[1]}, 1>\n\t\t")
 
     if angle != 0:      # in degrees
         ellipse_string += f"rotate <0, 0, {angle}> \n\t\t"
+    if center != [0, 0]:
+        ellipse_string += f"translate <{center[0]}, {center[1]}, 0> \n\t\t"
+
     if for_silo:
         ellipse_string += f"}}\n\t\t"
 
@@ -101,14 +104,15 @@ def create_rectangle(center, end, halfwidths, angle=0, for_silo=False):
       string: POV-Ray code describing the box
 
     """
+    # Spawn at origin, then rotate
     rect_string = (f"box\n\t\t{{\n\t\t"
-            + f"<{(center[0] - halfwidths[0])}, "
-            + f"{(center[1]-halfwidths[1])}, {end[0]:.5f}>\n\t\t"
-            + f"<{(center[0] + halfwidths[0])} "
-            + f"{(center[1]+halfwidths[1])}, {end[1]:.5f}>\n\t\t")
+            + f"<-{halfwidths[0]}, -{halfwidths[1]}, {end[0]:.5f}>\n\t\t"
+            + f"<{halfwidths[0]} {halfwidths[1]}, {end[1]:.5f}>\n\t\t")
 
     if angle != 0:      # in degrees
         rect_string += f"rotate <0, 0, {angle}> \n\t\t"
+    if center != [0, 0]:
+        rect_string += f"translate <{center[0]}, {center[1]}, 0> \n\t\t"
 
     if for_silo:
         rect_string += f"}}\n\t\t"
@@ -139,23 +143,19 @@ def create_polygon(center, end, vertices, device_dims, angle=0,
     num_points = len(vertices) + 1
 
     poly_string = (f"prism\n\t\t{{\n\t\t"
-            + "linear_sweep \n\t\tlinear_spline \n\t\t"
-            + f"{end[0]:.5f}, {end[1]:.5f}, {num_points} \n\t\t")
+                  + "linear_sweep \n\t\tlinear_spline \n\t\t"
+                  + f"{end[0]:.5f}, {end[1]:.5f}, {num_points} \n\t\t")
 
-    # Must spawn prism at origin, then rotate and translate into position
-    # Thanks, povray's weird coordinate system
+    # Must spawn prism at origin, then rotate and translate into 
+    # position. Angle is in degrees. (Rotation note: povray rotates 
+    # about x first, then y, then z.)
     for i in range(len(vertices)):
-        vertices[i][0] -= (center[0])
-        vertices[i][1] -= (center[1])
         poly_string += f"<{vertices[i][0]}, {vertices[i][1]}>, "
     poly_string += f"<{vertices[0][0]}, {vertices[0][1]}>\n\t\t"
 
-    poly_string += "rotate <90, 0, 0> \n\t\t"
-    poly_string += (f"translate -<{center[0]}, -{center[1]}, "
-            + f"{(end[0]-device_dims[2])}> \n\t\t")
-
-    if angle != 0:      # in degrees
-        poly_string += f"rotate <0, 0, {angle}> \n\t\t"
+    poly_string += (f"rotate <90, 0, {angle}> \n\t\t"
+                   + f"translate <{center[0]}, {center[1]}, "
+                   + f"{(end[0]-device_dims[2])}> \n\t\t")
 
     if for_silo:
         poly_string += f"}}\n\t\t"
@@ -265,8 +265,8 @@ def create_torus(major_radius, minor_radius, center, z_top, angle=0,
       str: String containing torus description
 
     """
-    # Create initial torus using smaller of the major radii
-    # Determine ellipse v circle based on type of major_radius
+    # Create initial torus using smaller of the major radii.
+    # Determine ellipse v circle based on type of major_radius.
     if isinstance(major_radius, list):
         # Ellipse
         smaller_dim = min(major_radius)
@@ -429,39 +429,35 @@ def add_accent_lines(shape, z_top, center, dims, feature_height, angle=0,
         line += sph
 
         # Rotate and translate lines into position
-        # NOTE: Povray has a left-handed coordinate system
-        # This makes the trig looks weird, but it works
-
-
-        # Need to add or subtract - not sure which 'cause left-handed - 
-        # the center from the vector1 (x-coord) and vector2 (y-coord)
-
+        # Povray's left-handed coordinate system makes trig looks weird
 
         # Xcyl, Ycyl
         for ii in range(2):
-            vector1 = y_limits[ii] * sin(radians(angle))
-            vector2 = -1.0 * y_limits[ii] * cos(radians(angle))
+            vector1 = y_limits[ii] * sin(radians(angle)) + center[0]
+            vector2 = -1 * y_limits[ii] * cos(radians(angle)) + center[1]
             for jj in range(2):
                 line += (f"object {{ Xcyl "
                         + f"rotate <0, 0, {angle:.6f}>\n\t\t"
                         + "translate "
                         + f"<{vector1:.6f}, {vector2:.6f}, {z_limits[jj]:.6f}>"
-                        + f"}}\n\t")
+                        + f" }}\n\t")
 
-            vector1 = x_limits[ii] * cos(radians(angle))
-            vector2 = x_limits[ii] * sin(radians(angle))
+            vector1 = x_limits[ii] * cos(radians(angle)) + center[0]
+            vector2 = x_limits[ii] * sin(radians(angle)) + center[1]
             for jj in range(2):
                 line += (f"object {{ Ycyl "
                         + f"rotate <0, 0, {angle:.6f}>\n\t\t"
                         + "translate "
                         + f"<{vector1:.6f}, {vector2:.6f}, {z_limits[jj]:.6f}>"
-                        + f"}}\n\t")
+                        + f" }}\n\t")
 
         # Zcyl, Corner
         for x in x_limits:
             for y in y_limits:
-                vector1 = x * cos(radians(angle)) - y * sin(radians(angle))
-                vector2 = y * cos(radians(angle)) + x * sin(radians(angle))
+                vector1 = (x*cos(radians(angle)) - y*sin(radians(angle))
+                          + center[0])
+                vector2 = (y*cos(radians(angle)) + x*sin(radians(angle))
+                          + center[1])
                 line += (f"object {{ Zcyl "
                         + "translate "
                         + f"<{vector1:.6f}, {vector2:.6f}, {0:.6f}>"
@@ -470,10 +466,7 @@ def add_accent_lines(shape, z_top, center, dims, feature_height, angle=0,
                     line += (f"object {{ Corner "
                             + "translate "
                             + f"<{vector1:.6f}, {vector2:.6f}, {z:.6f}>"
-                            + f"}}\n\t")
-
-        print("WARNING: add_accent_lines NOT FULLY TESTED!!!")
-        print("NOT guaranteed to work if rectangle not centered at origin!!!")
+                            + f" }}\n\t")
 
     elif shape == "polygon":
         # dims is a list of corners, where element = [x_coord, y_coord]
@@ -499,13 +492,12 @@ def add_accent_lines(shape, z_top, center, dims, feature_height, angle=0,
         line = sph
         #line += z_cyl
 
-        # Create cylinders in xy-plane, both at top and bottom of shape.
-        # Loop over all vertices defined in dims
+        # Create cylinders in xy-plane, both at the top and bottom of
+        # the shape.Loop over all vertices defined in dims.
         for i in range(len(dims)):
 
             # Define cylinder-end x-,y-coords
             end1 = dims[i]
-
             if len(dims) == (i+1):
                 end2 = dims[0]
             else:
@@ -515,22 +507,26 @@ def add_accent_lines(shape, z_top, center, dims, feature_height, angle=0,
             for z in z_limits:
 
                 # Add a sphere to the first of the two end points
-                line += (f"object {{ Corner "
+                # Translates to original insertion point on the origin-
+                # centered, unrotated object, then rotates to `angle`, 
+                # then translates to wherever center is.
+                line += (f"object {{ Corner \n\t\t"
                         + "translate "
                         + f"<-{end1[0]:.6f}, -{end1[1]:.6f}, {z:.6f}>"
+                        + f"rotate <0, 0, {angle}> \n\t\t"                           
+                        + f"translate <{center[0]}, {center[1]}, 0> \n\t\t"
                         + f"}}\n\t")
 
                 # Add cylinders for bigger straight lines
                 #
                 # Only create cylinders if they'll be longer than the
-                # sphere radius, line_thickness, because POV-Ray
-                # doesn't like really short cylinders.
+                # sphere radius (line_thickness) because POV-Ray
+                # doesn't like really short cylinders. Only need the
+                # x and y coords for cylinder length (z drops out 
+                # because it's horizontal).
                 #
-                # Only need the x and y coords for cylinder length
-                # The z value drops out because it's horizontal
-                #
-                # Do I eventually want to incorporated the blob 
-                # function?
+                # Do I eventually want to incorporate the blob 
+                # function? Probably not necessary.
                 cyl_length = sqrt((end1[0] - end2[0])**2 
                         + (end1[1] - end2[1])**2)
 
@@ -541,20 +537,21 @@ def add_accent_lines(shape, z_top, center, dims, feature_height, angle=0,
                 if cyl_length > line_thickness:
                     line += (f"cylinder \n\t\t{{\n\t\t "
                             + f"<-{end1[0]}, -{end1[1]}, {z:.5f}>, \n\t\t"
-                            + f"<-{end2[0]}, -{end2[1]}, {z:.5f}>, \n\t\t")
-                    line += f"{line_thickness}\n\t\t"
-                    line += (f"pigment {{ color rgbft "
+                            + f"<-{end2[0]}, -{end2[1]}, {z:.5f}>, \n\t\t"
+                            + f"{line_thickness}\n\t\t"
+                            + f"rotate <0, 0, {angle}> \n\t\t"
+                            + f"translate <{center[0]}, {center[1]}, 0> \n\t\t"
+                            + f"pigment {{ color rgbft "
                             + f"<{color[0]}, {color[1]}, {color[2]}, 0, 0>"
                             + f"}}\n\t\t"
                             + f"no_shadow\n\t\t}}\n\t")
 
 #            # Add vertical lines 
 #            #
-#            # Again, not used because there's not a way to only place
-#            # them where it makes sense
-#            #
-#            # May eventually output this to stdout should the user
-#            # want to add them manually
+#            # Not used because there's no good way to automatically
+#            # place them only where it makes sense. May eventually
+#            # output this to stdout in case the user wants to add 
+#            # them manually.
 #            line += (f"object {{ Zcyl "
 #                    + "translate "
 #                    + f"<{vector1:.6f}, {vector2:.6f}, {0:.6f}>"
@@ -831,7 +828,7 @@ def write_polygon_feature(shapes, k, device_dims, end,
         y_max = max(abs(y_max), vertex[1])
 
     polygon = ("// Polygon\n\t"
-            + create_polygon(center, end, vertices, device_dims, angle=0))
+            + create_polygon(center, end, vertices, device_dims, angle))
 
     polygon = set_color_and_finish(polygon, finish_dict=finish_dict,
             feature_color_finish=feature_color_finish[c])
