@@ -1250,7 +1250,6 @@ def create_device(device_dict,
     from os import system
     from copy import deepcopy
     from util import deep_access
-    from util_pov import guess_camera, write_header_and_camera, render_pov
 
     # Combine accent line color and thickness into a single variable
     # to simplify variable passing
@@ -1512,8 +1511,8 @@ def isosurface_unit_cell(mesh,
 
     """
     from util import deep_access
-    from util_iso import slice_isosurface
-    from util_shapes import create_device_layer
+    from povray_iso import slice_isosurface
+    from povray_shapes import create_device_layer
 
     # Create the finish dictionary only using "dull"
     finish_dict = {'dull': ''}

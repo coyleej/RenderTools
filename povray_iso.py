@@ -14,7 +14,7 @@ A quick summary of these functions:
 These functions are specific to isosurface creation/rendering.
 
 The function for generating the isosurface unit cell is 
-isosurface_unit_cell, located in util_shapes.
+isosurface_unit_cell, located in povray_shapes.
 
 A quick summary of these functions:
   * create_mesh2 calls write_mesh2_params
